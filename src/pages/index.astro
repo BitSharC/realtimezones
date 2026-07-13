@@ -22,7 +22,7 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
             Coordinate across time zones.
           </h2>
           <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-sans max-w-xl">
-            The fastest way to sync remote meetings. Drag the timeline, add cities, find optimal working hours overlaps, and export directly to your calendar.
+            Instantly find the best meeting time across your global team. Visualize every time zone, discover overlapping working hours, and share meetings in seconds.
           </p>
         </div>
         
@@ -118,14 +118,14 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
           id="timeline-scroll-container" 
           class="overflow-x-auto no-scrollbar border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-xs"
         >
-          <div class="min-w-[1408px] relative">
+          <div class="w-[1408px] shrink-0 relative">
             
             <!-- Hours scale header row -->
-            <div class="flex h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
-              <div class="sticky left-0 w-64 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
+            <div class="flex w-[1408px] shrink-0 h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
+              <div class="sticky left-0 w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
                 Cities & Zones
               </div>
-              <div id="timeline-headers" class="flex pl-2 pr-4">
+              <div id="timeline-headers" class="flex shrink-0 w-[1152px]">
                 <!-- Filled dynamically by JavaScript -->
               </div>
             </div>
@@ -140,8 +140,10 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
             <!-- Current Time line (absolute) -->
             <div 
               id="current-time-line" 
-              class="absolute top-10 bottom-0 pointer-events-none w-[1.5px] bg-red-500 dark:bg-red-400 z-10"
-            ></div>
+              class="absolute top-10 bottom-0 pointer-events-none w-[1.5px] bg-red-500 dark:bg-red-400 z-10 current-time-pulse"
+            >
+              <span class="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+            </div>
 
             <!-- List rows container -->
             <div 
@@ -182,12 +184,28 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
         </div>
 
         <!-- Action Export Card -->
-        <div class="bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between gap-4 min-h-[140px]">
+        <div class="bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between gap-4 min-h-[160px]">
           <div>
             <h4 class="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Export Meeting Slot</h4>
-            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-sans">
-              Save the selected coordinates to your digital calendar. Duration set to 1 hour.
-            </p>
+            
+            <!-- Meeting Duration Selection pills -->
+            <div class="mt-3">
+              <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1.5">Meeting Duration</span>
+              <div class="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 gap-0.5">
+                <button type="button" data-duration="30" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  30m
+                </button>
+                <button type="button" data-duration="60" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  1h
+                </button>
+                <button type="button" data-duration="90" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  90m
+                </button>
+                <button type="button" data-duration="120" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  2h
+                </button>
+              </div>
+            </div>
           </div>
           
           <!-- Dropdown triggers -->
@@ -197,11 +215,11 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
               id="calendar-dropdown-button" 
               class="w-full inline-flex items-center justify-between px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-100/50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-xs rounded-md shadow-2xs transition-all duration-150 cursor-pointer"
             >
-              <span class="inline-flex items-center gap-1.5">
+              <span class="inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                Calendar Options
+                <span class="calendar-label">Select Calendar</span>
               </span>
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"/>
@@ -213,14 +231,17 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
               id="calendar-dropdown-menu" 
               class="absolute right-0 bottom-full mb-1.5 w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-30 hidden overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-900 font-mono text-[11px]"
             >
-              <button type="button" id="export-google" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
+              <button type="button" id="export-google" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                 <span>Google Calendar</span>
               </button>
-              <button type="button" id="export-outlook" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
+              <button type="button" id="export-outlook" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
                 <span>Outlook Calendar</span>
               </button>
-              <button type="button" id="export-ics" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
-                <span>Download .ics File</span>
+              <button type="button" id="export-apple" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>Apple Calendar</span>
+              </button>
+              <button type="button" id="export-ics" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>ICS File</span>
               </button>
             </div>
           </div>
@@ -251,6 +272,13 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
 
   <!-- Keyboard Shortcuts reference modal -->
   <KeyboardHelp />
+
+  <!-- Global Tooltip Element -->
+  <div 
+    id="app-tooltip" 
+    class="fixed z-50 pointer-events-none opacity-0 scale-95 transition-all duration-[120ms] ease-out bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-800 dark:border-zinc-800 text-zinc-100 p-2.5 rounded-lg shadow-lg font-mono text-[10px] leading-relaxed max-w-[200px]"
+  >
+  </div>
 </Layout>
 
 <!-- Client Orchestrator Scripts Bundle -->

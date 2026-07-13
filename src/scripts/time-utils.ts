@@ -56,6 +56,17 @@ export function formatOffset(offsetMinutes: number): string {
 }
 
 /**
+ * Returns formatted offset label e.g., "UTC+05:30" or "UTC−08:00" using mathematical minus character "−"
+ */
+export function formatUtcOffset(offsetMinutes: number): string {
+  const absOffset = Math.abs(offsetMinutes);
+  const hours = Math.floor(absOffset / 60);
+  const minutes = absOffset % 60;
+  const sign = offsetMinutes >= 0 ? '+' : '−'; // unicode mathematical minus
+  return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/**
  * Get category of standard working hours:
  * - 08:00 - 18:00 -> Working (Green)
  * - 06:00 - 08:00, 18:00 - 22:00 -> Border (Amber)
@@ -67,6 +78,39 @@ export function getHourCategory(hour: number): 'working' | 'border' | 'sleep' {
   return 'sleep';
 }
 
+/**
+ * Evaluates a timezone's status for the duration of a meeting block.
+ */
+export function getParticipantStatusForMeeting(
+  timezone: string,
+  selectedDate: Date,
+  startHour: number,
+  durationMinutes: number
+): 'working' | 'border' | 'sleep' {
+  const start = new Date(selectedDate);
+  start.setHours(startHour, 0, 0, 0);
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+  
+  // We evaluate the status at start, end, and hourly intervals in between.
+  const timesToCheck: Date[] = [start, end];
+  let checkTime = new Date(start.getTime() + 60 * 60 * 1000);
+  while (checkTime.getTime() < end.getTime()) {
+    timesToCheck.push(new Date(checkTime));
+    checkTime = new Date(checkTime.getTime() + 60 * 60 * 1000);
+  }
+  
+  let finalStatus: 'working' | 'border' | 'sleep' = 'working';
+  for (const time of timesToCheck) {
+    const offset = getTimezoneOffset(timezone, time);
+    const localTime = new Date(time.getTime() + offset * 60000);
+    const localHour = localTime.getUTCHours();
+    const cat = getHourCategory(localHour);
+    if (cat === 'sleep') return 'sleep'; // sleep trumps all
+    if (cat === 'border') finalStatus = 'border'; // border trumps working
+  }
+  return finalStatus;
+}
+
 export interface OverlapSlot {
   homeHour: number;
   score: number;
@@ -74,45 +118,32 @@ export interface OverlapSlot {
 }
 
 /**
- * Evaluates the overlap scores for all 24 hours of a day.
+ * Evaluates the overlap scores for all 24 hours of a day, incorporating meeting duration.
  * Returns an array of slot details sorted by score (highest to lowest compatibility).
  */
 export function calculateOverlap(
   selectedDate: Date,
   homeTimezone: string,
-  cityTimezones: string[]
+  cityTimezones: string[],
+  durationMinutes: number = 60
 ): OverlapSlot[] {
   const slots: OverlapSlot[] = [];
-  
-  // Set date to 00:00:00 of local day in Home timezone
   const baseDate = new Date(selectedDate);
   
   for (let h = 0; h < 24; h++) {
-    // Construct exact time for this home hour
-    const dateAtHour = new Date(baseDate);
-    dateAtHour.setHours(h, 0, 0, 0);
-
     const ratings: Record<string, 'working' | 'border' | 'sleep'> = {};
     let totalScore = 0;
 
-    // Evaluate home zone
-    const homeOffset = getTimezoneOffset(homeTimezone, dateAtHour);
-    const homeLocalTime = new Date(dateAtHour.getTime() + homeOffset * 60000);
-    const homeLocalHour = homeLocalTime.getUTCHours();
-    const homeCat = getHourCategory(homeLocalHour);
-    ratings[homeTimezone] = homeCat;
-    
-    // Scoring logic
-    totalScore += homeCat === 'working' ? 10 : homeCat === 'border' ? 4 : -10;
+    // Evaluate home zone status for the duration
+    const homeStatus = getParticipantStatusForMeeting(homeTimezone, baseDate, h, durationMinutes);
+    ratings[homeTimezone] = homeStatus;
+    totalScore += homeStatus === 'working' ? 10 : homeStatus === 'border' ? 4 : -10;
 
     // Evaluate other zones
     for (const tz of cityTimezones) {
-      const offset = getTimezoneOffset(tz, dateAtHour);
-      const localTime = new Date(dateAtHour.getTime() + offset * 60000);
-      const localHour = localTime.getUTCHours();
-      const cat = getHourCategory(localHour);
-      ratings[tz] = cat;
-      totalScore += cat === 'working' ? 10 : cat === 'border' ? 4 : -10;
+      const status = getParticipantStatusForMeeting(tz, baseDate, h, durationMinutes);
+      ratings[tz] = status;
+      totalScore += status === 'working' ? 10 : status === 'border' ? 4 : -10;
     }
 
     slots.push({
