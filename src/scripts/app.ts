@@ -421,7 +421,7 @@ class RealTimeZonesApp {
 
     // 2. Search Modal interactions
     this.searchInput.addEventListener('input', () => this.handleSearchInput());
-    this.searchInput.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
+    this.searchModal.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
     
     // Close modal clicks
     this.searchModal.addEventListener('click', (e) => {
@@ -472,7 +472,7 @@ class RealTimeZonesApp {
     // 5. Timeline scrubbing via mouse drag/touch
     this.timelineRowsContainer.addEventListener('pointerdown', (e) => this.handleTimelinePointerDown(e));
     window.addEventListener('pointermove', (e) => this.handleTimelinePointerMove(e));
-    window.addEventListener('pointerup', () => this.handleTimelinePointerUp());
+    window.addEventListener('pointerup', (e) => this.handleTimelinePointerUp(e));
 
     // 6. Share trigger
     this.shareButton.addEventListener('click', () => this.copyShareLink());
@@ -756,13 +756,19 @@ class RealTimeZonesApp {
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const nextIdx = (activeIndex + 1) % items.length;
+      let nextIdx = 0;
+      if (document.activeElement !== this.searchInput && activeIndex !== -1) {
+        nextIdx = (activeIndex + 1) % items.length;
+      }
       items.forEach(it => it.classList.remove('bg-zinc-50', 'dark:bg-zinc-900/50'));
       (items[nextIdx] as HTMLButtonElement).focus();
       items[nextIdx].classList.add('bg-zinc-50', 'dark:bg-zinc-900/50');
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const prevIdx = (activeIndex - 1 + items.length) % items.length;
+      let prevIdx = items.length - 1;
+      if (document.activeElement !== this.searchInput && activeIndex !== -1) {
+        prevIdx = (activeIndex - 1 + items.length) % items.length;
+      }
       items.forEach(it => it.classList.remove('bg-zinc-50', 'dark:bg-zinc-900/50'));
       (items[prevIdx] as HTMLButtonElement).focus();
       items[prevIdx].classList.add('bg-zinc-50', 'dark:bg-zinc-900/50');
@@ -836,9 +842,12 @@ class RealTimeZonesApp {
     this.updateFocusFromX(e.clientX, track);
   }
 
-  private handleTimelinePointerUp() {
+  private handleTimelinePointerUp(e?: PointerEvent) {
     if (this.isDragging) {
       this.isDragging = false;
+      if (e && this.timelineRowsContainer.hasPointerCapture(e.pointerId)) {
+        this.timelineRowsContainer.releasePointerCapture(e.pointerId);
+      }
       this.saveState();
     }
   }
@@ -870,6 +879,9 @@ class RealTimeZonesApp {
     const durationHours = this.meetingDurationMinutes / 60;
     this.focusIndicator.style.width = `${durationHours * blockWidth}px`;
     
+    // Set height dynamically based on timeline rows container height
+    this.focusIndicator.style.height = `${this.timelineRowsContainer.offsetHeight}px`;
+    
     // Toggle active classes in individual elements covered by the meeting block
     const allBlocks = this.timelineRowsContainer.querySelectorAll('.hour-block');
     allBlocks.forEach(block => {
@@ -899,6 +911,9 @@ class RealTimeZonesApp {
     const indicatorLeft = leftMargin + (totalMinutes / 1440) * (24 * blockWidth);
     
     this.currentTimeLine.style.left = `${indicatorLeft}px`;
+    
+    // Set height dynamically based on timeline rows container height
+    this.currentTimeLine.style.height = `${this.timelineRowsContainer.offsetHeight}px`;
   }
 
   private updateRowClockTimes() {
