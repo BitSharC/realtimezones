@@ -1,0 +1,59 @@
+---
+// CitySearch.astro — Command Palette style fuzzy city search modal
+---
+<div 
+  id="search-modal" 
+  class="fixed inset-0 z-50 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4 hidden transition-opacity duration-150"
+>
+  <!-- Modal Surface -->
+  <div 
+    class="bg-white dark:bg-zinc-950 w-full max-w-lg rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col animate-subtle"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+  >
+    <!-- Header Input Box -->
+    <div class="flex items-center px-4 border-b border-zinc-200 dark:border-zinc-800">
+      <span class="text-zinc-400 dark:text-zinc-500 shrink-0 mr-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input 
+        type="text" 
+        id="search-input" 
+        class="w-full py-4 text-sm bg-transparent outline-none border-none placeholder-zinc-400 dark:placeholder-zinc-600 text-zinc-900 dark:text-zinc-50" 
+        placeholder="Search cities, countries, or regions..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button 
+        type="button" 
+        class="close-modal ml-2 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-md transition-colors cursor-pointer shrink-0" 
+        title="Close (Esc)"
+      >
+        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-100 dark:bg-zinc-900 text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 select-none">ESC</span>
+      </button>
+    </div>
+
+    <!-- Dynamic Search Results -->
+    <div 
+      id="search-results" 
+      class="max-h-[320px] overflow-y-auto divide-y divide-zinc-100/50 dark:divide-zinc-900/50 no-scrollbar py-2"
+    >
+      <!-- Results populated by client JS -->
+    </div>
+
+    <!-- Keyboard Help Footer -->
+    <div class="px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono flex items-center justify-between select-none">
+      <div class="flex gap-3">
+        <span><b class="text-zinc-600 dark:text-zinc-400 font-medium">↑↓</b> to navigate</span>
+        <span><b class="text-zinc-600 dark:text-zinc-400 font-medium">↵</b> to select</span>
+      </div>
+      <div>
+        <span>ESC to close</span>
+      </div>
+    </div>
+
+  </div>
+</div>

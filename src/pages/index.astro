@@ -1,11 +1,264 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
 ---
 
 <Layout>
-	<Welcome />
+  <!-- Global App Container -->
+  <div class="flex flex-col min-h-screen">
+    
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[1400px] w-full mx-auto px-4 md:px-8 py-8 flex flex-col gap-6 select-none">
+      
+      <!-- Hero / Title Section -->
+      <section class="flex flex-col md:flex-row md:items-end justify-between border-b border-zinc-200 dark:border-zinc-800 pb-6 gap-4">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+            Coordinate across time zones.
+          </h2>
+          <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-sans max-w-xl">
+            The fastest way to sync remote meetings. Drag the timeline, add cities, find optimal working hours overlaps, and export directly to your calendar.
+          </p>
+        </div>
+        
+        <!-- Quick Action Trigger -->
+        <button 
+          type="button" 
+          class="trigger-add-city inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-md shadow-xs transition-colors duration-150 cursor-pointer shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add City
+          <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 dark:bg-zinc-200 dark:text-zinc-600 border border-zinc-700 dark:border-zinc-300 shadow-2xs select-none">⌘K</span>
+        </button>
+      </section>
+
+      <!-- Dashboard Controls Section -->
+      <section class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-zinc-100/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800">
+        
+        <!-- Date Selector Actions -->
+        <div class="flex items-center gap-2">
+          <button 
+            type="button" 
+            id="prev-day" 
+            class="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Previous Day"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          
+          <button 
+            type="button" 
+            id="selected-date-label" 
+            class="px-4 py-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer"
+            title="Select custom date"
+          >
+            Monday, Jul 13, 2026
+          </button>
+          
+          <input 
+            type="date" 
+            id="date-picker-input" 
+            class="hidden" 
+          />
+
+          <button 
+            type="button" 
+            id="next-day" 
+            class="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Next Day"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+
+          <button 
+            type="button" 
+            id="reset-now" 
+            class="px-3 py-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg font-medium text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Reset to current time"
+          >
+            Now
+          </button>
+        </div>
+
+        <!-- Scrubber Scroller slider controller -->
+        <div class="flex-grow max-w-md flex items-center gap-3">
+          <span class="text-xs font-mono text-zinc-400 dark:text-zinc-500 shrink-0">Focus Time:</span>
+          <input 
+            type="range" 
+            id="focus-scrubber" 
+            min="0" 
+            max="23" 
+            value="12" 
+            class="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+          />
+          <span 
+            id="focus-time-readout" 
+            class="px-2 py-0.5 rounded text-xs font-mono bg-zinc-200/50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 shrink-0 border border-zinc-200/50 dark:border-zinc-800"
+          >
+            12:00
+          </span>
+        </div>
+
+      </section>
+
+      <!-- Main Scrubbing Timelines Grid -->
+      <section class="flex flex-col gap-2">
+        <div 
+          id="timeline-scroll-container" 
+          class="overflow-x-auto no-scrollbar border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-xs"
+        >
+          <div class="min-w-[1408px] relative">
+            
+            <!-- Hours scale header row -->
+            <div class="flex h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
+              <div class="sticky left-0 w-64 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
+                Cities & Zones
+              </div>
+              <div id="timeline-headers" class="flex pl-2 pr-4">
+                <!-- Filled dynamically by JavaScript -->
+              </div>
+            </div>
+
+            <!-- Absolute Selection highlights -->
+            <!-- Columns: 48px width each, sticky left: 256px -->
+            <div 
+              id="focus-indicator" 
+              class="absolute top-10 bottom-0 pointer-events-none border-2 border-blue-500/50 bg-blue-500/5 rounded-md z-10 w-12 transition-all duration-75"
+            ></div>
+            
+            <!-- Current Time line (absolute) -->
+            <div 
+              id="current-time-line" 
+              class="absolute top-10 bottom-0 pointer-events-none w-[1.5px] bg-red-500 dark:bg-red-400 z-10"
+            ></div>
+
+            <!-- List rows container -->
+            <div 
+              id="timeline-rows" 
+              class="flex flex-col divide-y divide-zinc-200/50 dark:divide-zinc-800/30"
+            >
+              <!-- Filled dynamically by JavaScript -->
+            </div>
+
+          </div>
+        </div>
+        
+        <!-- Legend description -->
+        <div class="flex items-center justify-end gap-4 px-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wide">
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-emerald-500/10 border border-emerald-500/20"></span>
+            <span>Working (8a - 6p)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-amber-500/10 border border-amber-500/20"></span>
+            <span>Border (6a-8a / 6p-10p)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-red-500/5 border border-red-500/10"></span>
+            <span>Sleep (10p - 6a)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Smart Overlap Finder Widget & Calendar Export Card -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Smart Overlap Widget container -->
+        <div class="lg:col-span-2 bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between min-h-[140px]">
+          <div id="overlap-widget">
+            <!-- Loaded dynamically by Javascript -->
+          </div>
+        </div>
+
+        <!-- Action Export Card -->
+        <div class="bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between gap-4 min-h-[140px]">
+          <div>
+            <h4 class="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Export Meeting Slot</h4>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-sans">
+              Save the selected coordinates to your digital calendar. Duration set to 1 hour.
+            </p>
+          </div>
+          
+          <!-- Dropdown triggers -->
+          <div class="relative w-full">
+            <button 
+              type="button" 
+              id="calendar-dropdown-button" 
+              class="w-full inline-flex items-center justify-between px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-100/50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-xs rounded-md shadow-2xs transition-all duration-150 cursor-pointer"
+            >
+              <span class="inline-flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Calendar Options
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            
+            <!-- Dropdown Menu list -->
+            <div 
+              id="calendar-dropdown-menu" 
+              class="absolute right-0 bottom-full mb-1.5 w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-30 hidden overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-900 font-mono text-[11px]"
+            >
+              <button type="button" id="export-google" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
+                <span>Google Calendar</span>
+              </button>
+              <button type="button" id="export-outlook" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
+                <span>Outlook Calendar</span>
+              </button>
+              <button type="button" id="export-ics" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2">
+                <span>Download .ics File</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div>
+          RealTimeZones • Clean & Fast Time Sync
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
 </Layout>
+
+<!-- Client Orchestrator Scripts Bundle -->
+<script src="../scripts/app.ts"></script>
+
+<script>
+  // Quick footer helper trigger bindings
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>

@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  /* Smooth animations */
+  --transition-subtle: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark light;
+}
+
+html {
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom interactive focus outline (Purple) */
+*:focus-visible {
+  outline: 2px solid #a855f7; /* Purple */
+  outline-offset: 2px;
+}
+
+/* Scrollbar hiding for synchronized timelines */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Tactile button active states */
+button:active, .btn-active:active {
+  transform: scale(0.98);
+}

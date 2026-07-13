@@ -1,0 +1,70 @@
+---
+// KeyboardHelp.astro — Keyboard shortcuts helper overlay
+---
+<div 
+  id="keyboard-help-modal" 
+  class="fixed inset-0 z-50 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 hidden transition-opacity duration-150"
+>
+  <div 
+    class="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 animate-subtle"
+    role="dialog"
+  >
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="14" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/>
+        </svg>
+        Keyboard Shortcuts
+      </h3>
+      <button 
+        type="button" 
+        class="close-modal text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer shrink-0" 
+        title="Close (Esc)"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Shortcuts Grid -->
+    <div class="space-y-4 my-2">
+      <div class="flex items-center justify-between text-xs font-mono border-b border-zinc-100 dark:border-zinc-900 pb-2">
+        <span class="text-zinc-500 dark:text-zinc-400 font-sans">Open City Search</span>
+        <div class="flex items-center gap-1">
+          <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">Ctrl</kbd>
+          <span class="text-zinc-400 font-sans">+</span>
+          <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">K</kbd>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs font-mono border-b border-zinc-100 dark:border-zinc-900 pb-2">
+        <span class="text-zinc-500 dark:text-zinc-400 font-sans">Move focus hour back</span>
+        <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">←</kbd>
+      </div>
+
+      <div class="flex items-center justify-between text-xs font-mono border-b border-zinc-100 dark:border-zinc-900 pb-2">
+        <span class="text-zinc-500 dark:text-zinc-400 font-sans">Move focus hour forward</span>
+        <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">→</kbd>
+      </div>
+
+      <div class="flex items-center justify-between text-xs font-mono border-b border-zinc-100 dark:border-zinc-900 pb-2">
+        <span class="text-zinc-500 dark:text-zinc-400 font-sans">Close search/modals</span>
+        <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">Esc</kbd>
+      </div>
+
+      <div class="flex items-center justify-between text-xs font-mono pb-1">
+        <span class="text-zinc-500 dark:text-zinc-400 font-sans">Show shortcuts list</span>
+        <kbd class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">?</kbd>
+      </div>
+    </div>
+
+    <!-- Bottom Action -->
+    <button 
+      type="button" 
+      class="close-modal w-full mt-4 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-xs rounded-md shadow-xs transition-colors duration-150 cursor-pointer"
+    >
+      Got it
+    </button>
+  </div>
+</div>

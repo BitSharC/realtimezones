@@ -1,0 +1,90 @@
+---
+// Header Component for RealTimeZones
+---
+<header class="sticky top-0 z-30 w-full border-b border-zinc-200 dark:border-zinc-800 bg-white/85 dark:bg-black/85 backdrop-blur-md transition-colors duration-150">
+  <div class="max-w-[1400px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+    
+    <!-- Logo & Brand -->
+    <a href="/" class="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md">
+      <!-- Premium Logo Icon -->
+      <span class="text-zinc-900 dark:text-zinc-50 shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </span>
+      <div class="flex flex-col">
+        <h1 class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">RealTimeZones</h1>
+        <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5 leading-none">THE FASTEST TIME SYNC</span>
+      </div>
+    </a>
+
+    <!-- Navigation & Action Elements -->
+    <div class="flex items-center gap-2 md:gap-4">
+      
+      <!-- Theme Switcher Pill -->
+      <div class="hidden sm:flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800">
+        <button 
+          type="button" 
+          data-theme="system" 
+          class="theme-btn px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150"
+          title="Use system preference"
+        >
+          System
+        </button>
+        <button 
+          type="button" 
+          data-theme="light" 
+          class="theme-btn px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150"
+          title="Light mode"
+        >
+          Light
+        </button>
+        <button 
+          type="button" 
+          data-theme="dark" 
+          class="theme-btn px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150"
+          title="Dark mode"
+        >
+          Dark
+        </button>
+      </div>
+
+      <!-- Key Help Trigger -->
+      <button 
+        type="button" 
+        id="trigger-keyboard-help" 
+        class="p-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all duration-150 cursor-pointer shrink-0" 
+        title="Keyboard Shortcuts (?)"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+
+      <!-- Share Button -->
+      <button 
+        type="button" 
+        id="share-button" 
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-xs rounded-md shadow-xs transition-all duration-150 cursor-pointer"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        Copy Link
+      </button>
+
+    </div>
+  </div>
+</header>
+
+<!-- Inline Share Success Toast -->
+<div 
+  id="share-toast" 
+  class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 border border-zinc-800 text-zinc-50 dark:bg-zinc-50 dark:border-zinc-200 dark:text-zinc-950 px-4 py-2.5 rounded-lg shadow-lg font-mono text-xs flex items-center gap-2 pointer-events-none transition-all duration-200 transform translate-y-2 opacity-0"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  Meeting URL copied to clipboard!
+</div>
