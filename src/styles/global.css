@@ -27,7 +27,8 @@ html {
   outline-offset: 2px;
 }
 
-#search-input:focus-visible {
+#search-input:focus-visible,
+.search-result-item:focus-visible {
   outline: none;
 }
 

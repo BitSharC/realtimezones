@@ -880,7 +880,7 @@ class RealTimeZonesApp {
 
     citiesList.forEach((city, index) => {
       const btn = document.createElement('button');
-      btn.className = `w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 transition-colors text-left focus:bg-zinc-100 dark:focus:bg-zinc-900 focus:outline-none search-result-item ${index === 0 ? 'bg-zinc-50 dark:bg-zinc-900/50' : ''}`;
+      btn.className = `w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 transition-colors text-left focus:bg-zinc-100 dark:focus:bg-zinc-900 focus:outline-none search-result-item ${index === 0 ? 'bg-zinc-100 dark:bg-zinc-900' : ''}`;
       btn.setAttribute('data-timezone', city.timezone);
       btn.setAttribute('data-city', city.name);
 
@@ -910,7 +910,7 @@ class RealTimeZonesApp {
 
     let activeIndex = -1;
     items.forEach((item, idx) => {
-      if (item === document.activeElement || item.classList.contains('bg-zinc-50') || item.classList.contains('dark:bg-zinc-900/50')) {
+      if (item === document.activeElement || item.classList.contains('bg-zinc-100') || item.classList.contains('dark:bg-zinc-900')) {
         activeIndex = idx;
       }
     });
@@ -921,18 +921,18 @@ class RealTimeZonesApp {
       if (document.activeElement !== this.searchInput && activeIndex !== -1) {
         nextIdx = (activeIndex + 1) % items.length;
       }
-      items.forEach(it => it.classList.remove('bg-zinc-50', 'dark:bg-zinc-900/50'));
+      items.forEach(it => it.classList.remove('bg-zinc-100', 'dark:bg-zinc-900'));
       (items[nextIdx] as HTMLButtonElement).focus();
-      items[nextIdx].classList.add('bg-zinc-50', 'dark:bg-zinc-900/50');
+      items[nextIdx].classList.add('bg-zinc-100', 'dark:bg-zinc-900');
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       let prevIdx = items.length - 1;
       if (document.activeElement !== this.searchInput && activeIndex !== -1) {
         prevIdx = (activeIndex - 1 + items.length) % items.length;
       }
-      items.forEach(it => it.classList.remove('bg-zinc-50', 'dark:bg-zinc-900/50'));
+      items.forEach(it => it.classList.remove('bg-zinc-100', 'dark:bg-zinc-900'));
       (items[prevIdx] as HTMLButtonElement).focus();
-      items[prevIdx].classList.add('bg-zinc-50', 'dark:bg-zinc-900/50');
+      items[prevIdx].classList.add('bg-zinc-100', 'dark:bg-zinc-900');
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const target = document.activeElement?.closest('.search-result-item') || items[0];
