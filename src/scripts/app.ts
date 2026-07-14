@@ -111,6 +111,41 @@ function getFlagEmoji(countryName: string, timezone: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
+// Parse manually typed meeting duration input (e.g. 90, 1.5h, 1h 30m) into minutes
+function parseDurationInput(input: string): number | null {
+  const clean = input.trim().toLowerCase();
+  if (!clean) return null;
+
+  // 1. Check if it's a pure integer (e.g. "90")
+  if (/^\d+$/.test(clean)) {
+    return parseInt(clean, 10);
+  }
+
+  // 2. Check if it's a plain decimal (e.g. "1.5" or "0.75")
+  if (/^\d+\.\d+$/.test(clean)) {
+    return Math.round(parseFloat(clean) * 60);
+  }
+
+  // 3. Parse patterns like: "1.5h", "1.5 h", "1h", "2 hours", "90m", "90 mins", "1h 30m", "1h30", "1 hr 15 min"
+  const hourMinRegex = /^(?:(\d+(?:\.\d+)?)\s*(?:h|hrs?|hours?))?\s*(?:(\d+)\s*(?:m|mins?|minutes?))?$/;
+  const match = clean.match(hourMinRegex);
+  if (match) {
+    const hours = match[1] ? parseFloat(match[1]) : 0;
+    const minutes = match[2] ? parseInt(match[2], 10) : 0;
+    if (hours > 0 || minutes > 0) {
+      return Math.round(hours * 60 + minutes);
+    }
+  }
+
+  // 4. Fallback: try to strip non-digit characters and parse as minutes
+  const justNumbers = clean.replace(/[^\d]/g, '');
+  if (justNumbers) {
+    return parseInt(justNumbers, 10);
+  }
+
+  return null;
+}
+
 // Generate dynamic meeting quality summary and details
 function getOverlapExplanation(
   this: RealTimeZonesApp,
@@ -136,13 +171,7 @@ function getOverlapExplanation(
   
   const sleepingCities: string[] = [];
   const borderCities: { name: string; localHour: number }[] = [];
-  
-  // Home timezone status
-  const homeStatus = getParticipantStatusForMeeting(homeTimezone, this.getSelectedDate(), startHour, durationMinutes);
-  if (homeStatus === 'working') numWorking++;
-  else if (homeStatus === 'border') numBorder++;
-  else numSleep++;
-  
+
   const getCityHourText = (tz: string) => {
     const start = new Date(this.getSelectedDate());
     start.setHours(startHour, 0, 0, 0);
@@ -150,6 +179,19 @@ function getOverlapExplanation(
     const localTime = new Date(start.getTime() + offset * 60000);
     return localTime.getUTCHours();
   };
+  
+  // Home timezone status
+  const homeStatus = getParticipantStatusForMeeting(homeTimezone, this.getSelectedDate(), startHour, durationMinutes);
+  const homeLocalHour = getCityHourText(homeTimezone);
+  if (homeStatus === 'working') {
+    numWorking++;
+  } else if (homeStatus === 'border') {
+    numBorder++;
+    borderCities.push({ name: "Your Location", localHour: homeLocalHour });
+  } else {
+    numSleep++;
+    sleepingCities.push("Your Location");
+  }
 
   // Evaluate other cities
   uniqueCities.forEach(city => {
@@ -167,29 +209,32 @@ function getOverlapExplanation(
     }
   });
 
-  const maxScore = P * 10;
-  const rawScore = numWorking * 10 + numBorder * 5;
-  const scorePercent = maxScore > 0 ? (rawScore / maxScore) * 100 : 0;
-
   let stars = 3;
   let label = 'Fair';
   
-  if (scorePercent >= 90 && numSleep === 0) {
-    stars = 5;
-    label = 'Excellent';
-  } else if (scorePercent >= 70 && numSleep === 0) {
-    stars = 4;
-    label = 'Great';
-  } else if (numSleep > 0) {
-    stars = 2;
-    label = 'Poor';
-    if (numSleep === P || scorePercent < 30) {
+  if (numSleep > 0) {
+    if (numSleep === P || (numSleep / P >= 0.5 && P >= 2) || (numWorking === 0 && numBorder === 0)) {
       stars = 1;
       label = 'Avoid';
+    } else {
+      stars = 2;
+      label = 'Poor';
     }
   } else {
-    stars = 3;
-    label = 'Fair';
+    const workingRatio = numWorking / P;
+    if (numWorking === P) {
+      stars = 5;
+      label = 'Excellent';
+    } else if (workingRatio >= 0.65) {
+      stars = 4;
+      label = 'Great';
+    } else if (workingRatio >= 0.35 || (P === 1 && numBorder === 1)) {
+      stars = 3;
+      label = 'Fair';
+    } else {
+      stars = 2;
+      label = 'Poor';
+    }
   }
 
   const summary = `${numWorking} of ${P} participant${P > 1 ? 's' : ''} inside working hours.`;
@@ -263,7 +308,7 @@ class RealTimeZonesApp {
 
   // Duration slider elements
   private durationSliderInput!: HTMLInputElement;
-  private durationSliderValue!: HTMLSpanElement;
+  private durationSliderValue!: HTMLInputElement;
 
   // Drag-to-scrub state
   private isDragging = false;
@@ -308,7 +353,7 @@ class RealTimeZonesApp {
     this.focusTimeReadout = document.getElementById('focus-time-readout') as HTMLSpanElement;
     this.tooltipEl = document.getElementById('app-tooltip') as HTMLDivElement;
     this.durationSliderInput = document.getElementById('duration-slider') as HTMLInputElement;
-    this.durationSliderValue = document.getElementById('duration-slider-value') as HTMLSpanElement;
+    this.durationSliderValue = document.getElementById('duration-slider-value') as HTMLInputElement;
   }
 
   private loadState() {
@@ -594,6 +639,33 @@ class RealTimeZonesApp {
       this.setDuration(parseInt(this.durationSliderInput.value));
     });
 
+    // 8h. Custom Duration Manual Input listener
+    this.durationSliderValue.addEventListener('input', () => {
+      const parsed = parseDurationInput(this.durationSliderValue.value);
+      if (parsed !== null && parsed >= 15 && parsed <= 720) {
+        this.meetingDurationMinutes = parsed;
+        this.durationSliderInput.value = parsed.toString();
+        this.updateDurationButtonsUI();
+        this.render();
+      }
+    });
+
+    this.durationSliderValue.addEventListener('change', () => {
+      const parsed = parseDurationInput(this.durationSliderValue.value);
+      if (parsed !== null && parsed > 0) {
+        const clamped = Math.max(15, Math.min(720, parsed));
+        this.setDuration(clamped);
+      } else {
+        this.updateDurationSliderUI();
+      }
+    });
+
+    this.durationSliderValue.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        this.durationSliderValue.blur();
+      }
+    });
+
     // 8g. Custom hover tooltips
     this.setupTooltipListeners();
 
@@ -639,6 +711,9 @@ class RealTimeZonesApp {
     if (!this.durationSliderInput || !this.durationSliderValue) return;
     this.durationSliderInput.value = this.meetingDurationMinutes.toString();
     
+    // Don't overwrite active manual typing
+    if (document.activeElement === this.durationSliderValue) return;
+
     const hrs = Math.floor(this.meetingDurationMinutes / 60);
     const mins = this.meetingDurationMinutes % 60;
     let label = '';
@@ -649,7 +724,7 @@ class RealTimeZonesApp {
     } else {
       label = `${mins}m`;
     }
-    this.durationSliderValue.textContent = label;
+    this.durationSliderValue.value = label;
   }
 
   private setTimeFormat(is24h: boolean) {
