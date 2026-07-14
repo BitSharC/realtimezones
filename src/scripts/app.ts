@@ -1243,13 +1243,64 @@ class RealTimeZonesApp {
     this.focusTimeReadout.textContent = `${startHoursStr} ${line} ${endHoursStr}`;
   }
 
+  // Calculates the best meeting hours for the group based on participant availability
+  private calculateBestTimes(): { hour: number; score: number; numWorking: number }[] {
+    const participantTimezones = [this.homeTimezone];
+    this.selectedCities.forEach(c => {
+      if (!participantTimezones.includes(c.timezone)) {
+        participantTimezones.push(c.timezone);
+      }
+    });
+
+    const totalCities = participantTimezones.length;
+    const results: { hour: number; score: number; numWorking: number }[] = [];
+
+    for (let h = 0; h < 24; h++) {
+      let numWorking = 0;
+      let numBorder = 0;
+      let numSleep = 0;
+
+      for (const tz of participantTimezones) {
+        const status = getParticipantStatusForMeeting(tz, this.selectedDate, h, this.meetingDurationMinutes);
+        if (status === 'working') {
+          numWorking++;
+        } else if (status === 'border') {
+          numBorder++;
+        } else {
+          numSleep++;
+        }
+      }
+
+      const score = (100 * numWorking + 60 * numBorder + (-20) * numSleep) / totalCities;
+      results.push({ hour: h, score, numWorking });
+    }
+
+    // Rank and Sort
+    results.sort((a, b) => {
+      // 1. Sort by score in descending order
+      if (Math.abs(b.score - a.score) > 1e-9) {
+        return b.score - a.score;
+      }
+      // 2. Tie breaker: prioritize hours with more Working (Green) participants
+      if (b.numWorking !== a.numWorking) {
+        return b.numWorking - a.numWorking;
+      }
+      // 3. Followed by hours closer to standard mid-day times (12:00 PM / hour 12)
+      const distA = Math.abs(a.hour - 12);
+      const distB = Math.abs(b.hour - 12);
+      if (distA !== distB) {
+        return distA - distB; // smaller distance comes first
+      }
+      // Default fallback
+      return a.hour - b.hour;
+    });
+
+    return results.slice(0, 3);
+  }
+
   // Renders the overlap slots recommendations
   private renderOverlapWidget() {
-    const otherTimezones = this.selectedCities.map(c => c.timezone);
-    const slots = calculateOverlap(this.selectedDate, this.homeTimezone, otherTimezones, this.meetingDurationMinutes);
-    
-    const sorted = [...slots].sort((a, b) => b.score - a.score);
-    const bestSlots = sorted.slice(0, 3);
+    const bestSlots = this.calculateBestTimes();
     
     this.overlapWidget.innerHTML = '';
     
@@ -1314,7 +1365,7 @@ class RealTimeZonesApp {
     
     bestSlots.forEach((slot, index) => {
       const btn = document.createElement('button');
-      const isSelected = slot.homeHour === this.focusHour;
+      const isSelected = slot.hour === this.focusHour;
       btn.className = `px-3 py-1.5 text-xs font-mono rounded border transition-all duration-150 cursor-pointer ${
         isSelected 
           ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-50 dark:border-zinc-50 dark:text-zinc-950 font-bold hover:opacity-90' 
@@ -1325,10 +1376,10 @@ class RealTimeZonesApp {
       
       let formattedHour = '';
       if (this.is24HourFormat) {
-        formattedHour = slot.homeHour.toString().padStart(2, '0') + ':00';
+        formattedHour = slot.hour.toString().padStart(2, '0') + ':00';
       } else {
-        const ampm = slot.homeHour >= 12 ? 'PM' : 'AM';
-        let displayHour = slot.homeHour % 12;
+        const ampm = slot.hour >= 12 ? 'PM' : 'AM';
+        let displayHour = slot.hour % 12;
         if (displayHour === 0) displayHour = 12;
         formattedHour = `${displayHour}:00 ${ampm}`;
       }
@@ -1336,13 +1387,13 @@ class RealTimeZonesApp {
       btn.textContent = `${rank}: ${formattedHour}`;
       
       btn.addEventListener('click', () => {
-        this.focusHour = slot.homeHour;
+        this.focusHour = slot.hour;
         this.focusScrubberInput.value = this.focusHour.toString();
         this.updateFocusIndicatorPosition();
         this.updateFocusReadout();
         this.updateShareUrl();
         this.renderOverlapWidget();
-        this.scrollTimelineToHour(slot.homeHour);
+        this.scrollTimelineToHour(slot.hour);
         this.updateRowClockTimes();
       });
       btnGroup.appendChild(btn);
