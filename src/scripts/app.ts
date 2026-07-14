@@ -165,12 +165,14 @@ function getOverlapExplanation(
   });
 
   const P = participantTimezones.length;
+  if (P === 0) {
+    return { stars: 0, label: 'None', score: 0, details: '', summary: '' };
+  }
   let numWorking = 0;
   let numBorder = 0;
   let numSleep = 0;
   
-  const sleepingCities: string[] = [];
-  const borderCities: { name: string; localHour: number }[] = [];
+  const nonWorkingCities: { name: string; localHour: number }[] = [];
 
   const getCityHourText = (tz: string) => {
     const start = new Date(this.getSelectedDate());
@@ -178,6 +180,15 @@ function getOverlapExplanation(
     const offset = getTimezoneOffset(tz, start);
     const localTime = new Date(start.getTime() + offset * 60000);
     return localTime.getUTCHours();
+  };
+
+  const getContextualTimeOfDay = (hour: number): string => {
+    if (hour >= 6 && hour < 8) return "starting their day";
+    if (hour >= 8 && hour < 12) return "in their morning";
+    if (hour >= 12 && hour < 17) return "in their afternoon";
+    if (hour >= 17 && hour < 19) return "approaching evening";
+    if (hour >= 19 && hour < 22) return "winding down their day";
+    return "sleeping"; // 22:00 to 05:59
   };
   
   // Home timezone status
@@ -187,10 +198,10 @@ function getOverlapExplanation(
     numWorking++;
   } else if (homeStatus === 'border') {
     numBorder++;
-    borderCities.push({ name: "Your Location", localHour: homeLocalHour });
+    nonWorkingCities.push({ name: "Your Location", localHour: homeLocalHour });
   } else {
     numSleep++;
-    sleepingCities.push("Your Location");
+    nonWorkingCities.push({ name: "Your Location", localHour: homeLocalHour });
   }
 
   // Evaluate other cities
@@ -202,48 +213,42 @@ function getOverlapExplanation(
       numWorking++;
     } else if (status === 'border') {
       numBorder++;
-      borderCities.push({ name: city.name, localHour });
+      nonWorkingCities.push({ name: city.name, localHour });
     } else {
       numSleep++;
-      sleepingCities.push(city.name);
+      nonWorkingCities.push({ name: city.name, localHour });
     }
   });
 
+  // Calculate score out of 100
+  const score = Math.round((100 * numWorking + 60 * numBorder + (-20) * numSleep) / P);
+
   let stars = 3;
   let label = 'Fair';
-  
-  if (numSleep > 0) {
-    if (numSleep === P || (numSleep / P >= 0.5 && P >= 2) || (numWorking === 0 && numBorder === 0)) {
-      stars = 1;
-      label = 'Avoid';
-    } else {
-      stars = 2;
-      label = 'Poor';
-    }
+
+  // Fine-tuned mapping
+  if (numWorking === P) {
+    stars = 5;
+    label = 'Excellent';
+  } else if (score >= 80) {
+    stars = 4;
+    label = 'Great';
+  } else if (score >= 60 && numWorking > 0) {
+    stars = 3;
+    label = 'Fair';
+  } else if (score >= 35) {
+    stars = 2;
+    label = 'Poor';
   } else {
-    const workingRatio = numWorking / P;
-    if (numWorking === P) {
-      stars = 5;
-      label = 'Excellent';
-    } else if (workingRatio >= 0.65) {
-      stars = 4;
-      label = 'Great';
-    } else if (workingRatio >= 0.35 || (P === 1 && numBorder === 1)) {
-      stars = 3;
-      label = 'Fair';
-    } else {
-      stars = 2;
-      label = 'Poor';
-    }
+    stars = 1;
+    label = 'Avoid';
   }
 
   const summary = `${numWorking} of ${P} participant${P > 1 ? 's' : ''} inside working hours.`;
   
   let details = '';
-  if (sleepingCities.length > 0) {
-    details = `${sleepingCities.join(', ')} will be sleeping.`;
-  } else if (borderCities.length > 0) {
-    const detailsArr = borderCities.map(c => {
+  if (nonWorkingCities.length > 0) {
+    const detailsArr = nonWorkingCities.map(c => {
       let formattedHour = '';
       if (this.is24HourFormat) {
         formattedHour = `${c.localHour.toString().padStart(2, '0')}:00`;
@@ -254,18 +259,15 @@ function getOverlapExplanation(
         formattedHour = `${displayHour}:00 ${ampm}`;
       }
 
-      if (c.localHour >= 18 && c.localHour < 22) {
-        return `${c.name} is approaching evening (${formattedHour})`;
-      } else {
-        return `${c.name} is starting their day (${formattedHour})`;
-      }
+      const phrase = getContextualTimeOfDay(c.localHour);
+      return `${c.name} is ${phrase} (${formattedHour})`;
     });
     details = detailsArr.join(', ') + '.';
   } else {
     details = 'All participants are inside optimal working hours.';
   }
 
-  return { stars, label, summary, details };
+  return { stars, label, summary, details, score };
 }
 
 interface SavedState {
@@ -282,7 +284,7 @@ class RealTimeZonesApp {
   private selectedDate: Date = new Date();
   private activeTheme: 'dark' | 'light' | 'system' = 'system';
   private meetingDurationMinutes: number = 60; // 60 minutes default
-  private is24HourFormat: boolean = false; // 24-hour time format default false (12h)
+  public is24HourFormat: boolean = false; // 24-hour time format default false (12h)
 
   // DOM Elements cache
   private scrollContainer!: HTMLDivElement;

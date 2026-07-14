@@ -89,26 +89,10 @@ export function getParticipantStatusForMeeting(
 ): 'working' | 'border' | 'sleep' {
   const start = new Date(selectedDate);
   start.setHours(startHour, 0, 0, 0);
-  const end = new Date(start.getTime() + durationMinutes * 60000);
-  
-  // We evaluate the status at start, end, and hourly intervals in between.
-  const timesToCheck: Date[] = [start, end];
-  let checkTime = new Date(start.getTime() + 60 * 60 * 1000);
-  while (checkTime.getTime() < end.getTime()) {
-    timesToCheck.push(new Date(checkTime));
-    checkTime = new Date(checkTime.getTime() + 60 * 60 * 1000);
-  }
-  
-  let finalStatus: 'working' | 'border' | 'sleep' = 'working';
-  for (const time of timesToCheck) {
-    const offset = getTimezoneOffset(timezone, time);
-    const localTime = new Date(time.getTime() + offset * 60000);
-    const localHour = localTime.getUTCHours();
-    const cat = getHourCategory(localHour);
-    if (cat === 'sleep') return 'sleep'; // sleep trumps all
-    if (cat === 'border') finalStatus = 'border'; // border trumps working
-  }
-  return finalStatus;
+  const offset = getTimezoneOffset(timezone, start);
+  const localTime = new Date(start.getTime() + offset * 60000);
+  const localHour = localTime.getUTCHours();
+  return getHourCategory(localHour);
 }
 
 export interface OverlapSlot {
