@@ -135,7 +135,7 @@ function getOverlapExplanation(
   let numSleep = 0;
   
   const sleepingCities: string[] = [];
-  const borderCities: string[] = [];
+  const borderCities: { name: string; localHour: number }[] = [];
   
   // Home timezone status
   const homeStatus = getParticipantStatusForMeeting(homeTimezone, this.getSelectedDate(), startHour, durationMinutes);
@@ -160,7 +160,7 @@ function getOverlapExplanation(
       numWorking++;
     } else if (status === 'border') {
       numBorder++;
-      borderCities.push(`${city.name} (${localHour}:00)`);
+      borderCities.push({ name: city.name, localHour });
     } else {
       numSleep++;
       sleepingCities.push(city.name);
@@ -198,13 +198,21 @@ function getOverlapExplanation(
   if (sleepingCities.length > 0) {
     details = `${sleepingCities.join(', ')} will be sleeping.`;
   } else if (borderCities.length > 0) {
-    const detailsArr = borderCities.map(cStr => {
-      const name = cStr.split(' (')[0];
-      const hr = parseInt(cStr.split('(')[1]);
-      if (hr >= 18 && hr < 22) {
-        return `${name} is approaching evening`;
+    const detailsArr = borderCities.map(c => {
+      let formattedHour = '';
+      if (this.is24HourFormat) {
+        formattedHour = `${c.localHour.toString().padStart(2, '0')}:00`;
       } else {
-        return `${name} is starting their day`;
+        const ampm = c.localHour >= 12 ? 'PM' : 'AM';
+        let displayHour = c.localHour % 12;
+        if (displayHour === 0) displayHour = 12;
+        formattedHour = `${displayHour}:00 ${ampm}`;
+      }
+
+      if (c.localHour >= 18 && c.localHour < 22) {
+        return `${c.name} is approaching evening (${formattedHour})`;
+      } else {
+        return `${c.name} is starting their day (${formattedHour})`;
       }
     });
     details = detailsArr.join(', ') + '.';
@@ -229,6 +237,7 @@ class RealTimeZonesApp {
   private selectedDate: Date = new Date();
   private activeTheme: 'dark' | 'light' | 'system' = 'system';
   private meetingDurationMinutes: number = 60; // 60 minutes default
+  private is24HourFormat: boolean = false; // 24-hour time format default false (12h)
 
   // DOM Elements cache
   private scrollContainer!: HTMLDivElement;
@@ -252,6 +261,10 @@ class RealTimeZonesApp {
   private focusScrubberInput!: HTMLInputElement;
   private focusTimeReadout!: HTMLSpanElement;
 
+  // Duration slider elements
+  private durationSliderInput!: HTMLInputElement;
+  private durationSliderValue!: HTMLSpanElement;
+
   // Drag-to-scrub state
   private isDragging = false;
 
@@ -269,6 +282,8 @@ class RealTimeZonesApp {
     this.loadState();
     this.setupEventListeners();
     this.setTheme(this.activeTheme); // enforce FOUC class and active button UI
+    this.updateTimeFormatButtonsUI();
+    this.updateDurationSliderUI();
     this.render();
     this.startTimeTicker();
   }
@@ -292,6 +307,8 @@ class RealTimeZonesApp {
     this.focusScrubberInput = document.getElementById('focus-scrubber') as HTMLInputElement;
     this.focusTimeReadout = document.getElementById('focus-time-readout') as HTMLSpanElement;
     this.tooltipEl = document.getElementById('app-tooltip') as HTMLDivElement;
+    this.durationSliderInput = document.getElementById('duration-slider') as HTMLInputElement;
+    this.durationSliderValue = document.getElementById('duration-slider-value') as HTMLSpanElement;
   }
 
   private loadState() {
@@ -378,16 +395,29 @@ class RealTimeZonesApp {
     // Load Duration
     if (urlDuration) {
       const parsedDur = parseInt(urlDuration);
-      if ([30, 60, 90, 120].includes(parsedDur)) {
+      if (!isNaN(parsedDur) && parsedDur >= 15 && parsedDur <= 1440) {
         this.meetingDurationMinutes = parsedDur;
       }
     } else {
       const storedDur = localStorage.getItem('rtz_duration');
       if (storedDur) {
         const parsedDur = parseInt(storedDur);
-        if ([30, 60, 90, 120].includes(parsedDur)) {
+        if (!isNaN(parsedDur) && parsedDur >= 15 && parsedDur <= 1440) {
           this.meetingDurationMinutes = parsedDur;
         }
+      }
+    }
+
+    // Load Time Format
+    const urlFormat = params.get('format');
+    if (urlFormat) {
+      this.is24HourFormat = urlFormat === '24h';
+    } else {
+      const storedFormat = localStorage.getItem('rtz_format');
+      if (storedFormat) {
+        this.is24HourFormat = storedFormat === '24h';
+      } else {
+        this.is24HourFormat = false;
       }
     }
   }
@@ -400,6 +430,7 @@ class RealTimeZonesApp {
     localStorage.setItem('rtz_state', JSON.stringify(stateObj));
     localStorage.setItem('rtz_favorites', JSON.stringify(Array.from(this.favoriteTimezones)));
     localStorage.setItem('rtz_duration', this.meetingDurationMinutes.toString());
+    localStorage.setItem('rtz_format', this.is24HourFormat ? '24h' : '12h');
     this.updateShareUrl();
   }
 
@@ -409,6 +440,7 @@ class RealTimeZonesApp {
     params.set('focus', this.focusHour.toString());
     params.set('date', this.selectedDate.toISOString().split('T')[0]);
     params.set('duration', this.meetingDurationMinutes.toString());
+    params.set('format', this.is24HourFormat ? '24h' : '12h');
     window.history.replaceState(null, '', `?${params.toString()}`);
   }
 
@@ -455,6 +487,7 @@ class RealTimeZonesApp {
       this.updateFocusReadout();
       this.updateShareUrl();
       this.renderOverlapWidget();
+      this.updateRowClockTimes();
     });
     this.focusScrubberInput.addEventListener('pointerdown', () => {
       this.focusIndicator.classList.add('dragging');
@@ -542,6 +575,7 @@ class RealTimeZonesApp {
       this.updateFocusReadout();
       this.updateShareUrl();
       this.renderOverlapWidget();
+      this.updateRowClockTimes();
       
       // Restore animation transition after a short tick
       setTimeout(() => {
@@ -551,7 +585,16 @@ class RealTimeZonesApp {
       }, 50);
     }, { passive: false });
 
-    // 8e. Custom hover tooltips
+    // 8e. Time Format Switcher toggles
+    document.getElementById('time-format-12h')?.addEventListener('click', () => this.setTimeFormat(false));
+    document.getElementById('time-format-24h')?.addEventListener('click', () => this.setTimeFormat(true));
+
+    // 8f. Custom Duration Slider input listener
+    this.durationSliderInput.addEventListener('input', () => {
+      this.setDuration(parseInt(this.durationSliderInput.value));
+    });
+
+    // 8g. Custom hover tooltips
     this.setupTooltipListeners();
 
     // 9. Keyboard Help Trigger
@@ -575,6 +618,7 @@ class RealTimeZonesApp {
     this.updateFocusReadout();
     this.renderOverlapWidget();
     this.updateDurationButtonsUI();
+    this.updateDurationSliderUI();
   }
 
   private updateDurationButtonsUI() {
@@ -589,6 +633,48 @@ class RealTimeZonesApp {
         btn.classList.add('text-zinc-500', 'dark:text-zinc-400');
       }
     });
+  }
+
+  private updateDurationSliderUI() {
+    if (!this.durationSliderInput || !this.durationSliderValue) return;
+    this.durationSliderInput.value = this.meetingDurationMinutes.toString();
+    
+    const hrs = Math.floor(this.meetingDurationMinutes / 60);
+    const mins = this.meetingDurationMinutes % 60;
+    let label = '';
+    if (hrs > 0 && mins > 0) {
+      label = `${hrs}h ${mins}m`;
+    } else if (hrs > 0) {
+      label = `${hrs}h`;
+    } else {
+      label = `${mins}m`;
+    }
+    this.durationSliderValue.textContent = label;
+  }
+
+  private setTimeFormat(is24h: boolean) {
+    this.is24HourFormat = is24h;
+    this.saveState();
+    this.render();
+    this.updateTimeFormatButtonsUI();
+  }
+
+  private updateTimeFormatButtonsUI() {
+    const btn12h = document.getElementById('time-format-12h');
+    const btn24h = document.getElementById('time-format-24h');
+    if (!btn12h || !btn24h) return;
+
+    if (this.is24HourFormat) {
+      btn24h.classList.add('bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-900', 'dark:text-zinc-50', 'font-bold');
+      btn24h.classList.remove('text-zinc-500', 'dark:text-zinc-400');
+      btn12h.classList.remove('bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-900', 'dark:text-zinc-50', 'font-bold');
+      btn12h.classList.add('text-zinc-500', 'dark:text-zinc-400');
+    } else {
+      btn12h.classList.add('bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-900', 'dark:text-zinc-50', 'font-bold');
+      btn12h.classList.remove('text-zinc-500', 'dark:text-zinc-400');
+      btn24h.classList.remove('bg-zinc-200', 'dark:bg-zinc-800', 'text-zinc-900', 'dark:text-zinc-50', 'font-bold');
+      btn24h.classList.add('text-zinc-500', 'dark:text-zinc-400');
+    }
   }
 
   private handleGlobalKeydowns(e: KeyboardEvent) {
@@ -866,6 +952,7 @@ class RealTimeZonesApp {
       this.updateFocusReadout();
       this.updateShareUrl();
       this.renderOverlapWidget();
+      this.updateRowClockTimes();
     }
   }
 
@@ -918,15 +1005,27 @@ class RealTimeZonesApp {
 
   private updateRowClockTimes() {
     const rows = this.timelineRowsContainer.querySelectorAll('.timeline-row');
-    const now = new Date();
+    const baseDate = new Date(this.selectedDate);
+    baseDate.setHours(this.focusHour, 0, 0, 0);
 
     rows.forEach(row => {
       const tz = row.getAttribute('data-timezone');
       if (!tz) return;
 
-      const offsetMinutes = getTimezoneOffset(tz, now);
-      const localTime = new Date(now.getTime() + offsetMinutes * 60000);
-      const formattedTime = localTime.getUTCHours().toString().padStart(2, '0') + ':' + localTime.getUTCMinutes().toString().padStart(2, '0');
+      const offsetMinutes = getTimezoneOffset(tz, baseDate);
+      const localTime = new Date(baseDate.getTime() + offsetMinutes * 60000);
+      const localHour = localTime.getUTCHours();
+      const localMin = localTime.getUTCMinutes();
+      
+      let formattedTime = '';
+      if (this.is24HourFormat) {
+        formattedTime = localHour.toString().padStart(2, '0') + ':' + localMin.toString().padStart(2, '0');
+      } else {
+        const ampm = localHour >= 12 ? 'PM' : 'AM';
+        let displayHour = localHour % 12;
+        if (displayHour === 0) displayHour = 12;
+        formattedTime = displayHour.toString().padStart(2, '0') + ':' + localMin.toString().padStart(2, '0') + ' ' + ampm;
+      }
       
       const clockElement = row.querySelector('.row-clock-time');
       if (clockElement) {
@@ -974,7 +1073,7 @@ class RealTimeZonesApp {
     const start = new Date(this.selectedDate);
     start.setHours(this.focusHour, 0, 0, 0);
 
-    const timezoneDisplay = this.selectedCities.map(c => `${c.name} (${new Intl.DateTimeFormat('en-US', { timeZone: c.timezone, hour: '2-digit', minute: '2-digit', hour12: false }).format(start)})`).join('\n• ');
+    const timezoneDisplay = this.selectedCities.map(c => `${c.name} (${new Intl.DateTimeFormat('en-US', { timeZone: c.timezone, hour: '2-digit', minute: '2-digit', hour12: !this.is24HourFormat }).format(start)})`).join('\n• ');
     
     const details = {
       title: 'Sync: Team Timezone Coordination',
@@ -1032,18 +1131,37 @@ class RealTimeZonesApp {
 
   private updateFocusReadout() {
     const startHour = this.focusHour;
-    const startHoursStr = `${startHour.toString().padStart(2, '0')}:00`;
-    
     const endTotalMinutes = startHour * 60 + this.meetingDurationMinutes;
     const endHour = Math.floor(endTotalMinutes / 60) % 24;
     const endMinutes = endTotalMinutes % 60;
-    const endHoursStr = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    
+    let startHoursStr = '';
+    let endHoursStr = '';
+    
+    if (this.is24HourFormat) {
+      startHoursStr = `${startHour.toString().padStart(2, '0')}:00`;
+      endHoursStr = `${endHour.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    } else {
+      const startPeriod = startHour >= 12 ? 'PM' : 'AM';
+      let startH = startHour % 12;
+      if (startH === 0) startH = 12;
+      startHoursStr = `${startH}:00 ${startPeriod}`;
+      
+      const endPeriod = (Math.floor(endTotalMinutes / 60) % 24) >= 12 ? 'PM' : 'AM';
+      let endH = endHour % 12;
+      if (endH === 0) endH = 12;
+      endHoursStr = `${endH}:${endMinutes.toString().padStart(2, '0')} ${endPeriod}`;
+    }
     
     let line = '━━━━';
     if (this.meetingDurationMinutes === 30) line = '━━';
     else if (this.meetingDurationMinutes === 60) line = '━━━━━━';
     else if (this.meetingDurationMinutes === 90) line = '━━━━━━━━━━';
     else if (this.meetingDurationMinutes === 120) line = '━━━━━━━━━━━━━━';
+    else {
+      const numChars = Math.max(2, Math.floor(this.meetingDurationMinutes / 15));
+      line = '━'.repeat(numChars);
+    }
     
     this.focusTimeReadout.textContent = `${startHoursStr} ${line} ${endHoursStr}`;
   }
@@ -1127,7 +1245,17 @@ class RealTimeZonesApp {
       }`;
       
       const rank = index === 0 ? 'Best' : index === 1 ? '2nd' : '3rd';
-      const formattedHour = slot.homeHour.toString().padStart(2, '0') + ':00';
+      
+      let formattedHour = '';
+      if (this.is24HourFormat) {
+        formattedHour = slot.homeHour.toString().padStart(2, '0') + ':00';
+      } else {
+        const ampm = slot.homeHour >= 12 ? 'PM' : 'AM';
+        let displayHour = slot.homeHour % 12;
+        if (displayHour === 0) displayHour = 12;
+        formattedHour = `${displayHour}:00 ${ampm}`;
+      }
+      
       btn.textContent = `${rank}: ${formattedHour}`;
       
       btn.addEventListener('click', () => {
@@ -1138,6 +1266,7 @@ class RealTimeZonesApp {
         this.updateShareUrl();
         this.renderOverlapWidget();
         this.scrollTimelineToHour(slot.homeHour);
+        this.updateRowClockTimes();
       });
       btnGroup.appendChild(btn);
     });
@@ -1168,10 +1297,14 @@ class RealTimeZonesApp {
       
       // Display AM/PM or numbers
       let label = '';
-      if (h === 0) label = '12A';
-      else if (h === 12) label = '12P';
-      else if (h < 12) label = `${h}A`;
-      else label = `${h - 12}P`;
+      if (this.is24HourFormat) {
+        label = h.toString().padStart(2, '0');
+      } else {
+        if (h === 0) label = '12A';
+        else if (h === 12) label = '12P';
+        else if (h < 12) label = `${h}A`;
+        else label = `${h - 12}P`;
+      }
 
       hourDiv.textContent = label;
       timelineHeaders.appendChild(hourDiv);
@@ -1303,7 +1436,20 @@ class RealTimeZonesApp {
       const category = getHourCategory(localHour);
 
       const localDayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: city.timezone }).format(dateAtHour);
-      const formattedLocalHour = localHour.toString().padStart(2, '0');
+
+      let displayHour = localHour;
+      let ampm = localHour >= 12 ? 'pm' : 'am';
+      let dataLocalTime = '';
+      
+      if (this.is24HourFormat) {
+        dataLocalTime = `${localHour.toString().padStart(2, '0')}:00`;
+      } else {
+        displayHour = localHour % 12;
+        if (displayHour === 0) displayHour = 12;
+        dataLocalTime = `${displayHour}:00 ${ampm.toUpperCase()}`;
+      }
+
+      const formattedLocalHour = displayHour.toString().padStart(2, '0');
 
       // Setup styling based on category
       let categoryClass = '';
@@ -1319,15 +1465,22 @@ class RealTimeZonesApp {
       hourBlock.className = `hour-block w-12 h-16 flex flex-col justify-center items-center font-mono border-r border-b border-zinc-200/50 dark:border-zinc-800/30 text-xs shrink-0 cursor-ew-resize transition-all ${categoryClass}`;
       hourBlock.setAttribute('data-hour-idx', h.toString());
       hourBlock.setAttribute('data-city-name', city.name);
-      hourBlock.setAttribute('data-local-time', `${formattedLocalHour}:00`);
+      hourBlock.setAttribute('data-local-time', dataLocalTime);
       hourBlock.setAttribute('data-category', category);
       hourBlock.setAttribute('data-offset', formatUtcOffset(offset));
       hourBlock.setAttribute('data-weekday', localDayOfWeek);
       
-      hourBlock.innerHTML = `
-        <span class="font-bold">${formattedLocalHour}</span>
-        <span class="text-[9px] scale-90 opacity-60 mt-0.5">${localHour >= 12 ? 'pm' : 'am'}</span>
-      `;
+      if (this.is24HourFormat) {
+        hourBlock.innerHTML = `
+          <span class="font-bold">${formattedLocalHour}</span>
+          <span class="text-[9px] scale-90 opacity-60 mt-0.5">:00</span>
+        `;
+      } else {
+        hourBlock.innerHTML = `
+          <span class="font-bold">${formattedLocalHour}</span>
+          <span class="text-[9px] scale-90 opacity-60 mt-0.5">${ampm}</span>
+        `;
+      }
 
       track.appendChild(hourBlock);
     }
@@ -1411,7 +1564,19 @@ class RealTimeZonesApp {
     const now = new Date();
     const offset = getTimezoneOffset(timezone, now);
     const localTime = new Date(now.getTime() + offset * 60000);
-    const formattedTime = localTime.getUTCHours().toString().padStart(2, '0') + ':' + localTime.getUTCMinutes().toString().padStart(2, '0');
+    const localHour = localTime.getUTCHours();
+    const localMin = localTime.getUTCMinutes();
+    
+    let formattedTime = '';
+    if (this.is24HourFormat) {
+      formattedTime = localHour.toString().padStart(2, '0') + ':' + localMin.toString().padStart(2, '0');
+    } else {
+      const ampm = localHour >= 12 ? 'PM' : 'AM';
+      let displayHour = localHour % 12;
+      if (displayHour === 0) displayHour = 12;
+      formattedTime = displayHour.toString().padStart(2, '0') + ':' + localMin.toString().padStart(2, '0') + ' ' + ampm;
+    }
+    
     const offsetStr = formatUtcOffset(offset);
 
     this.tooltipEl.innerHTML = `

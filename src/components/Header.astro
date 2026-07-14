@@ -15,7 +15,7 @@
       </span>
       <div class="flex flex-col">
         <h1 class="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">RealTimeZones</h1>
-        <span class="text-[9px] text-zinc-500 dark:text-zinc-400 font-mono mt-1.5 tracking-widest leading-none">THE FASTEST TIME SYNC</span>
+        <span class="text-[9px] text-zinc-500 dark:text-zinc-400 font-mono mt-1.5 tracking-wide leading-none">THE FASTEST TIME SYNC</span>
       </div>
     </a>
 
@@ -47,6 +47,26 @@
           title="Dark mode"
         >
           Dark
+        </button>
+      </div>
+
+      <!-- Time Format Switcher Pill -->
+      <div class="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800">
+        <button 
+          type="button" 
+          id="time-format-12h" 
+          class="time-format-btn px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150"
+          title="Use 12-hour time format"
+        >
+          12h
+        </button>
+        <button 
+          type="button" 
+          id="time-format-24h" 
+          class="time-format-btn px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150"
+          title="Use 24-hour time format"
+        >
+          24h
         </button>
       </div>
 
