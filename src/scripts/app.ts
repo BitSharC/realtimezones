@@ -752,9 +752,25 @@ class RealTimeZonesApp {
     themeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         const theme = btn.getAttribute('data-theme') as 'dark' | 'light' | 'system';
-        this.setTheme(theme);
+        this.setTheme(theme, true);
       });
     });
+
+    // Mobile Theme Toggle Click Event (Cycles through System -> Light -> Dark)
+    const mobileThemeToggle = document.getElementById('theme-toggle-mobile');
+    if (mobileThemeToggle) {
+      mobileThemeToggle.addEventListener('click', () => {
+        let nextTheme: 'dark' | 'light' | 'system' = 'light';
+        if (this.activeTheme === 'system') {
+          nextTheme = 'light';
+        } else if (this.activeTheme === 'light') {
+          nextTheme = 'dark';
+        } else {
+          nextTheme = 'system';
+        }
+        this.setTheme(nextTheme, true);
+      });
+    }
 
     // 8b. Add media query listener for system prefers-color-scheme
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -1471,7 +1487,7 @@ class RealTimeZonesApp {
   }
 
   // Theme settings
-  private setTheme(theme: 'dark' | 'light' | 'system') {
+  private setTheme(theme: 'dark' | 'light' | 'system', save: boolean = false) {
     this.activeTheme = theme;
     localStorage.setItem('theme', theme);
     
@@ -1483,6 +1499,9 @@ class RealTimeZonesApp {
     }
 
     this.updateThemeUI();
+    if (save) {
+      this.saveState();
+    }
   }
 
   private updateThemeUI() {
@@ -1497,6 +1516,21 @@ class RealTimeZonesApp {
         btn.classList.add('text-zinc-500', 'dark:text-zinc-400');
       }
     });
+
+    // Update mobile theme toggle icons visibility
+    const mobileBtn = document.getElementById('theme-toggle-mobile');
+    if (mobileBtn) {
+      const iconSystem = mobileBtn.querySelector('.theme-icon-system');
+      const iconLight = mobileBtn.querySelector('.theme-icon-light');
+      const iconDark = mobileBtn.querySelector('.theme-icon-dark');
+
+      if (iconSystem) iconSystem.classList.toggle('hidden', this.activeTheme !== 'system');
+      if (iconLight) iconLight.classList.toggle('hidden', this.activeTheme !== 'light');
+      if (iconDark) iconDark.classList.toggle('hidden', this.activeTheme !== 'dark');
+
+      const displayNames = { system: 'System Preference', light: 'Light Mode', dark: 'Dark Mode' };
+      mobileBtn.title = `Theme: ${displayNames[this.activeTheme] || this.activeTheme} (Click to switch)`;
+    }
   }
 
   private updateFocusReadout() {
