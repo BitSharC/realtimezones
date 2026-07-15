@@ -390,6 +390,8 @@ class RealTimeZonesApp {
   private isFirstVisit = false;
   private saveDebounceTimeout: number | null = null;
   private activeElementBeforeResetModal: HTMLElement | null = null;
+  private touchStartPos: { x: number; y: number } | null = null;
+  private touchStartTrack: Element | null = null;
 
   // DOM Elements cache
   private scrollContainer!: HTMLDivElement;
@@ -918,6 +920,12 @@ class RealTimeZonesApp {
     this.scrollContainer?.addEventListener('scroll', () => {
       this.saveStateDebounced();
     });
+
+    // 13. Update positions on window resize
+    window.addEventListener('resize', () => {
+      this.updateFocusIndicatorPosition();
+      this.updateCurrentTimeIndicator();
+    });
   }
 
   private setDuration(minutes: number) {
@@ -1075,7 +1083,8 @@ class RealTimeZonesApp {
 
   private scrollTimelineToHour(hour: number) {
     const blockWidth = 48;
-    const stickyWidth = 256;
+    const headerCol = this.scrollContainer?.querySelector('.sticky') as HTMLElement;
+    const stickyWidth = headerCol ? headerCol.offsetWidth : 256;
     const viewportWidth = this.scrollContainer.clientWidth;
     const targetScroll = (hour * blockWidth) + stickyWidth - (viewportWidth / 2) + (blockWidth / 2);
     this.scrollContainer.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
@@ -1242,7 +1251,14 @@ class RealTimeZonesApp {
     const track = (e.target as HTMLElement).closest('.timeline-hours-track');
     if (!track) return;
     
-    // Only drag with left mouse click or touch
+    if (e.pointerType === 'touch') {
+      // Record starting touch position and track
+      this.touchStartPos = { x: e.clientX, y: e.clientY };
+      this.touchStartTrack = track;
+      return; // Do not start drag-scrubbing or capture pointer yet to allow scrolling
+    }
+
+    // Only drag with left mouse click
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     this.isDragging = true;
@@ -1255,6 +1271,7 @@ class RealTimeZonesApp {
   }
 
   private handleTimelinePointerMove(e: PointerEvent) {
+    if (e.pointerType === 'touch') return;
     if (!this.isDragging) return;
     
     const track = (e.target as HTMLElement).closest('.timeline-hours-track') || document.querySelector('.timeline-hours-track');
@@ -1264,6 +1281,22 @@ class RealTimeZonesApp {
   }
 
   private handleTimelinePointerUp(e?: PointerEvent) {
+    if (e && e.pointerType === 'touch') {
+      if (this.touchStartPos && this.touchStartTrack) {
+        const dx = e.clientX - this.touchStartPos.x;
+        const dy = e.clientY - this.touchStartPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // If the touch moved less than 8px, treat it as a tap/click
+        if (distance < 8) {
+          this.updateFocusFromX(e.clientX, this.touchStartTrack);
+        }
+      }
+      this.touchStartPos = null;
+      this.touchStartTrack = null;
+      return;
+    }
+
     if (this.isDragging) {
       this.isDragging = false;
       if (e && this.timelineRowsContainer.hasPointerCapture(e.pointerId)) {
@@ -1293,7 +1326,8 @@ class RealTimeZonesApp {
 
   private updateFocusIndicatorPosition() {
     const blockWidth = 48;
-    const leftMargin = 256; // Left sticky panel
+    const headerCol = this.scrollContainer?.querySelector('.sticky') as HTMLElement;
+    const leftMargin = headerCol ? headerCol.offsetWidth : 256; // Left sticky panel
     const positionLeft = leftMargin + this.focusHour * blockWidth;
     this.focusIndicator.style.left = `${positionLeft}px`;
     
@@ -1328,7 +1362,8 @@ class RealTimeZonesApp {
     const minutes = homeLocalTime.getUTCMinutes();
     
     const blockWidth = 48;
-    const leftMargin = 256;
+    const headerCol = this.scrollContainer?.querySelector('.sticky') as HTMLElement;
+    const leftMargin = headerCol ? headerCol.offsetWidth : 256;
     const totalMinutes = hours * 60 + minutes;
     const indicatorLeft = leftMargin + (totalMinutes / 1440) * (24 * blockWidth);
     
@@ -1606,7 +1641,7 @@ class RealTimeZonesApp {
       </div>
       
       <!-- Right Side: Smart Recommendations -->
-      <div class="flex flex-col justify-between items-start md:items-end gap-3 border-t md:border-t-0 md:border-l border-zinc-150 dark:border-zinc-800 md:pl-6 pt-4 md:pt-0">
+      <div class="flex flex-col justify-between items-start md:items-end gap-3 border-t md:border-t-0 md:border-l border-zinc-200 dark:border-zinc-800 md:pl-6 pt-4 md:pt-0">
         <div class="w-full md:text-right">
           <h4 class="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Smart Recommendations</h4>
           <p class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
@@ -1663,8 +1698,9 @@ class RealTimeZonesApp {
     this.saveStateDebounced();
 
     // 1. Render Date UI labels
+    const showShortWeekday = window.innerWidth < 640;
     const formatter = new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
+      weekday: showShortWeekday ? 'short' : 'long',
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -1732,7 +1768,7 @@ class RealTimeZonesApp {
 
   private renderEmptyStateRow() {
     const row = document.createElement('div');
-    row.className = 'flex w-[1408px] shrink-0 h-24 items-center bg-zinc-50/50 dark:bg-zinc-950/10 border-b border-zinc-200/50 dark:border-zinc-800/30';
+    row.className = 'flex w-[1312px] sm:w-[1408px] shrink-0 h-24 items-center bg-zinc-50/50 dark:bg-zinc-950/10 border-b border-zinc-200/50 dark:border-zinc-800/30';
     row.innerHTML = `
       <div class="sticky left-0 w-full md:w-[600px] px-6 py-4 flex items-center gap-4 text-zinc-500 dark:text-zinc-450 z-20">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1760,7 +1796,7 @@ class RealTimeZonesApp {
     const offsetMinutes = getTimezoneOffset(city.timezone, this.selectedDate);
 
     const row = document.createElement('div');
-    row.className = 'flex w-[1408px] shrink-0 h-16 items-center timeline-row group transition-colors duration-150 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/10';
+    row.className = 'flex w-[1312px] sm:w-[1408px] shrink-0 h-16 items-center timeline-row group transition-colors duration-150 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/10';
     row.setAttribute('data-timezone', city.timezone);
 
     // Star/Favorite status
@@ -1768,13 +1804,13 @@ class RealTimeZonesApp {
 
     // Left metadata column (sticky)
     const leftPanel = document.createElement('div');
-    leftPanel.className = 'city-header-panel sticky left-0 w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full flex items-center justify-between px-4 border-r border-zinc-200 dark:border-zinc-800 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] cursor-help';
+    leftPanel.className = 'city-header-panel sticky left-0 w-40 sm:w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full flex items-center justify-between px-2 sm:px-4 border-r border-zinc-200 dark:border-zinc-800 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] cursor-help';
     leftPanel.setAttribute('data-city-name', city.name);
     leftPanel.setAttribute('data-country', city.country);
     leftPanel.setAttribute('data-timezone', city.timezone);
 
     leftPanel.innerHTML = `
-      <div class="flex items-center gap-2 overflow-hidden min-w-0 pr-2">
+      <div class="flex items-center gap-1 sm:gap-2 overflow-hidden min-w-0 pr-1 sm:pr-2">
         ${
           isHome 
             ? `
@@ -1783,28 +1819,28 @@ class RealTimeZonesApp {
               </span>
               `
             : `
-              <button class="favorite-btn text-zinc-300 dark:text-zinc-700 hover:text-amber-500 dark:hover:text-amber-500 transition-colors cursor-pointer shrink-0 ${isStarred ? 'text-amber-500! dark:text-amber-500!' : ''}" title="Favorite/Pin City">
+              <button class="favorite-btn hidden sm:flex text-zinc-300 dark:text-zinc-700 hover:text-amber-500 dark:hover:text-amber-500 transition-colors cursor-pointer shrink-0 ${isStarred ? 'text-amber-500! dark:text-amber-500!' : ''}" title="Favorite/Pin City">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               </button>
               `
         }
         <div class="flex flex-col min-w-0">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <span class="text-sm leading-none shrink-0" role="img" aria-label="${city.country} Flag">${getFlagEmoji(city.country, city.timezone)}</span>
-            <span class="font-medium text-sm text-zinc-900 dark:text-zinc-50 truncate" title="${city.name}">${city.name}</span>
+          <div class="flex items-center gap-1 min-w-0">
+            <span class="text-xs sm:text-sm leading-none shrink-0" role="img" aria-label="${city.country} Flag">${getFlagEmoji(city.country, city.timezone)}</span>
+            <span class="font-medium text-xs sm:text-sm text-zinc-900 dark:text-zinc-50 truncate" title="${city.name}">${city.name}</span>
           </div>
-          <span class="text-[11px] text-zinc-400 dark:text-zinc-500 truncate font-mono">${city.country === 'Home' ? 'Your Location' : city.country}</span>
+          <span class="hidden sm:block text-[11px] text-zinc-400 dark:text-zinc-500 truncate font-mono">${city.country === 'Home' ? 'Your Location' : city.country}</span>
         </div>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <div class="flex flex-col items-end min-w-[72px] shrink-0 pr-1">
-          <span class="row-clock-time font-mono text-sm font-bold text-zinc-800 dark:text-zinc-200">00:00</span>
-          <span class="row-utc-offset font-mono text-[9px] text-zinc-400 dark:text-zinc-500 tracking-tight leading-none mt-1 select-none">${formatUtcOffset(offsetMinutes)}</span>
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div class="flex flex-col items-end min-w-[54px] sm:min-w-[72px] shrink-0 pr-0.5 sm:pr-1">
+          <span class="row-clock-time font-mono text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-200">00:00</span>
+          <span class="row-utc-offset font-mono text-[9px] text-zinc-400 dark:text-zinc-500 tracking-tight leading-none mt-0.5 sm:mt-1 select-none">${formatUtcOffset(offsetMinutes)}</span>
         </div>
         ${
           !isHome
             ? `
-              <button class="remove-btn text-zinc-300 dark:text-zinc-700 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900" title="Remove city">
+              <button class="remove-btn text-zinc-400 dark:text-zinc-650 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer p-0.5 sm:p-1 rounded hover:bg-zinc-150 dark:hover:bg-zinc-900 shrink-0" title="Remove city">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
               `

@@ -92,8 +92,16 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
         </div>
 
         <!-- Scrubber Scroller slider controller -->
-        <div class="flex-grow max-w-md flex items-center gap-3">
-          <span class="text-xs font-mono text-zinc-400 dark:text-zinc-500 shrink-0">Focus Time:</span>
+        <div class="flex-grow max-w-md flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+          <div class="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+            <span class="text-xs font-mono text-zinc-400 dark:text-zinc-500 shrink-0">Focus Time:</span>
+            <span 
+              id="focus-time-readout" 
+              class="px-2 py-0.5 rounded text-xs font-mono bg-zinc-200/50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 shrink-0 border border-zinc-200/50 dark:border-zinc-800 order-last sm:order-none"
+            >
+              12:00
+            </span>
+          </div>
           <input 
             type="range" 
             id="focus-scrubber" 
@@ -102,12 +110,6 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
             value="12" 
             class="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
           />
-          <span 
-            id="focus-time-readout" 
-            class="px-2 py-0.5 rounded text-xs font-mono bg-zinc-200/50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 shrink-0 border border-zinc-200/50 dark:border-zinc-800"
-          >
-            12:00
-          </span>
         </div>
 
       </section>
@@ -118,11 +120,11 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
           id="timeline-scroll-container" 
           class="overflow-x-auto no-scrollbar border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-xs"
         >
-          <div class="w-[1408px] shrink-0 relative">
+          <div class="w-[1312px] sm:w-[1408px] shrink-0 relative">
             
             <!-- Hours scale header row -->
-            <div class="flex w-[1408px] shrink-0 h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
-              <div class="sticky left-0 w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
+            <div class="flex w-[1312px] sm:w-[1408px] shrink-0 h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
+              <div class="sticky left-0 w-40 sm:w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-2 sm:px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
                 Cities & Zones
               </div>
               <div id="timeline-headers" class="flex shrink-0 w-[1152px]">
