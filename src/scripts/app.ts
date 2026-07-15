@@ -270,9 +270,111 @@ function getOverlapExplanation(
   return { stars, label, summary, details, score };
 }
 
-interface SavedState {
-  cities: string[]; // Timezone identifiers
-  favorites: string[]; // Timezone identifiers
+export interface WorkspaceData {
+  cities: string[];
+  favorites: string[];
+  theme: 'dark' | 'light' | 'system';
+  timeFormat: '12h' | '24h';
+  duration: number;
+  focusTime: number;
+  workingHours: { start: number; end: number } | null;
+  timelineScrollLeft: number;
+  version: number;
+  lastUpdated: number;
+}
+
+function validateWorkspace(data: any): data is WorkspaceData {
+  if (!data || typeof data !== 'object') return false;
+  if (!Array.isArray(data.cities) || !data.cities.every(c => typeof c === 'string')) return false;
+  if (!Array.isArray(data.favorites) || !data.favorites.every(f => typeof f === 'string')) return false;
+  if (data.theme !== 'dark' && data.theme !== 'light' && data.theme !== 'system') return false;
+  if (data.timeFormat !== '12h' && data.timeFormat !== '24h') return false;
+  if (typeof data.duration !== 'number' || data.duration < 15 || data.duration > 1440) return false;
+  if (typeof data.focusTime !== 'number' || data.focusTime < 0 || data.focusTime > 23) return false;
+  if (typeof data.timelineScrollLeft !== 'number') return false;
+  if (typeof data.version !== 'number') return false;
+  return true;
+}
+
+function migrateWorkspace(): WorkspaceData | null {
+  const legacyStateStr = localStorage.getItem('rtz_state');
+  const legacyFavStr = localStorage.getItem('rtz_favorites');
+  const legacyTheme = localStorage.getItem('theme');
+  const legacyDur = localStorage.getItem('rtz_duration');
+  const legacyFormat = localStorage.getItem('rtz_format');
+
+  if (!legacyStateStr && !legacyFavStr && !legacyTheme && !legacyDur && !legacyFormat) {
+    return null;
+  }
+
+  let citiesList: string[] = [];
+  try {
+    if (legacyStateStr) {
+      const parsed = JSON.parse(legacyStateStr);
+      if (parsed && Array.isArray(parsed.cities)) {
+        citiesList = parsed.cities;
+      }
+    }
+  } catch (e) {}
+
+  let favoritesList: string[] = [];
+  try {
+    if (legacyFavStr) {
+      const parsed = JSON.parse(legacyFavStr);
+      if (Array.isArray(parsed)) {
+        favoritesList = parsed;
+      }
+    }
+  } catch (e) {}
+
+  const theme = (legacyTheme as 'dark' | 'light' | 'system') || 'system';
+
+  let duration = 60;
+  if (legacyDur) {
+    const parsed = parseInt(legacyDur, 10);
+    if (!isNaN(parsed) && parsed >= 15 && parsed <= 1440) {
+      duration = parsed;
+    }
+  }
+
+  const timeFormat = legacyFormat === '24h' ? '24h' : '12h';
+
+  const data: WorkspaceData = {
+    cities: citiesList,
+    favorites: favoritesList,
+    theme,
+    timeFormat,
+    duration,
+    focusTime: new Date().getHours(),
+    workingHours: null,
+    timelineScrollLeft: 0,
+    version: 1,
+    lastUpdated: Date.now()
+  };
+
+  // Clear legacy keys
+  localStorage.removeItem('rtz_state');
+  localStorage.removeItem('rtz_favorites');
+  localStorage.removeItem('theme');
+  localStorage.removeItem('rtz_duration');
+  localStorage.removeItem('rtz_format');
+
+  return data;
+}
+
+function createFreshWorkspace(): WorkspaceData {
+  return {
+    cities: [],
+    favorites: [],
+    theme: 'system',
+    timeFormat: '12h',
+    duration: 60,
+    focusTime: new Date().getHours(),
+    workingHours: null,
+    timelineScrollLeft: 0,
+    version: 1,
+    lastUpdated: Date.now()
+  };
 }
 
 class RealTimeZonesApp {
@@ -283,8 +385,11 @@ class RealTimeZonesApp {
   private focusHour: number = new Date().getHours();
   private selectedDate: Date = new Date();
   private activeTheme: 'dark' | 'light' | 'system' = 'system';
-  private meetingDurationMinutes: number = 60; // 60 minutes default
-  public is24HourFormat: boolean = false; // 24-hour time format default false (12h)
+  private meetingDurationMinutes: number = 60;
+  public is24HourFormat: boolean = false;
+  private isFirstVisit = false;
+  private saveDebounceTimeout: number | null = null;
+  private activeElementBeforeResetModal: HTMLElement | null = null;
 
   // DOM Elements cache
   private scrollContainer!: HTMLDivElement;
@@ -304,6 +409,15 @@ class RealTimeZonesApp {
   private keyboardHelpModal!: HTMLDivElement;
   private tooltipEl!: HTMLDivElement;
   
+  // Settings / Reset elements
+  private settingsMenuButton!: HTMLButtonElement;
+  private settingsDropdown!: HTMLDivElement;
+  private resetWorkspaceButton!: HTMLButtonElement;
+  private resetConfirmModal!: HTMLDivElement;
+  private btnConfirmCancel!: HTMLButtonElement;
+  private btnConfirmReset!: HTMLButtonElement;
+  private workspaceToast!: HTMLDivElement;
+
   // Scrubber elements
   private focusScrubberInput!: HTMLInputElement;
   private focusTimeReadout!: HTMLSpanElement;
@@ -356,36 +470,75 @@ class RealTimeZonesApp {
     this.tooltipEl = document.getElementById('app-tooltip') as HTMLDivElement;
     this.durationSliderInput = document.getElementById('duration-slider') as HTMLInputElement;
     this.durationSliderValue = document.getElementById('duration-slider-value') as HTMLInputElement;
+
+    // Cache Settings elements
+    this.settingsMenuButton = document.getElementById('settings-menu-button') as HTMLButtonElement;
+    this.settingsDropdown = document.getElementById('settings-dropdown') as HTMLDivElement;
+    this.resetWorkspaceButton = document.getElementById('reset-workspace-button') as HTMLButtonElement;
+    this.resetConfirmModal = document.getElementById('reset-confirm-modal') as HTMLDivElement;
+    this.btnConfirmCancel = document.getElementById('btn-confirm-cancel') as HTMLButtonElement;
+    this.btnConfirmReset = document.getElementById('btn-confirm-reset') as HTMLButtonElement;
+    this.workspaceToast = document.getElementById('workspace-toast') as HTMLDivElement;
   }
 
   private loadState() {
-    // 1. Theme configuration
-    this.activeTheme = (localStorage.getItem('theme') as 'dark' | 'light' | 'system') || 'system';
+    // 1. Determine if first visit
+    this.isFirstVisit = !localStorage.getItem('workspace') &&
+                         !localStorage.getItem('rtz_state') &&
+                         !localStorage.getItem('rtz_favorites') &&
+                         !localStorage.getItem('theme') &&
+                         !localStorage.getItem('rtz_duration') &&
+                         !localStorage.getItem('rtz_format');
 
-    // 2. Parse URL parameters (takes precedence over localStorage)
+    // 2. Load workspace data (with migration and failsafe)
+    let wsData: WorkspaceData | null = null;
+    try {
+      const rawWs = localStorage.getItem('workspace');
+      if (rawWs) {
+        const parsed = JSON.parse(rawWs);
+        if (validateWorkspace(parsed)) {
+          wsData = parsed;
+        } else {
+          // Version migration or corrupted reset safely
+          if (parsed && typeof parsed.version === 'number' && parsed.version !== 1) {
+            console.warn(`Incompatible workspace version ${parsed.version}. Resetting safely.`);
+          }
+          wsData = createFreshWorkspace();
+        }
+      } else {
+        // Try migration from legacy keys
+        wsData = migrateWorkspace();
+        if (!wsData && this.isFirstVisit) {
+          wsData = createFreshWorkspace();
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing workspace from localStorage. Creating fresh workspace.', e);
+      wsData = createFreshWorkspace();
+    }
+
+    if (!wsData) {
+      wsData = createFreshWorkspace();
+    }
+
+    // 3. Parse URL parameters (takes precedence over stored workspace)
     const params = new URLSearchParams(window.location.search);
     const urlCities = params.get('cities');
     const urlFocus = params.get('focus');
     const urlDate = params.get('date');
     const urlDuration = params.get('duration');
+    const urlFormat = params.get('format');
 
-    // Load favorites from local storage
-    try {
-      const storedFavorites = localStorage.getItem('rtz_favorites');
-      if (storedFavorites) {
-        const parsed = JSON.parse(storedFavorites);
-        this.favoriteTimezones = new Set(parsed);
-      }
-    } catch (e) {
-      console.error('Error loading favorites:', e);
-    }
+    // Theme (Astro inline script also reads this unified key)
+    this.activeTheme = wsData.theme;
 
+    // Load Favorites
+    this.favoriteTimezones = new Set(wsData.favorites);
+
+    // Load Cities
     if (urlCities) {
-      // Recreate from URL params
       const cityList = urlCities.split(',');
       this.selectedCities = [];
-      
-      // Find matching cities from our dataset
       for (const cityName of cityList) {
         const decoded = decodeURIComponent(cityName);
         const match = cities.find((c: City) => c.name.toLowerCase() === decoded.toLowerCase() || c.timezone === decoded);
@@ -394,91 +547,112 @@ class RealTimeZonesApp {
         }
       }
     } else {
-      // Load selected cities from localStorage
-      try {
-        const stored = localStorage.getItem('rtz_state');
-        if (stored) {
-          const parsed = JSON.parse(stored) as SavedState;
-          this.selectedCities = [];
-          for (const tz of parsed.cities) {
-            const match = cities.find((c: City) => c.timezone === tz);
-            if (match) this.selectedCities.push(match);
-          }
-        }
-      } catch (e) {
-        console.error('Error loading stored state:', e);
-      }
-    }
-
-    // Default cities if empty
-    if (this.selectedCities.length === 0) {
-      // Add London, Tokyo, San Francisco as default tech grid
-      const defaults = ["Europe/London", "Asia/Tokyo", "America/Los_Angeles"];
-      for (const tz of defaults) {
+      this.selectedCities = [];
+      for (const tz of wsData.cities) {
         const match = cities.find((c: City) => c.timezone === tz);
         if (match) this.selectedCities.push(match);
       }
     }
 
-    // Load Focus hour
+    // Load Focus Hour
     if (urlFocus) {
-      const parsedFocus = parseInt(urlFocus);
+      const parsedFocus = parseInt(urlFocus, 10);
       if (!isNaN(parsedFocus) && parsedFocus >= 0 && parsedFocus < 24) {
         this.focusHour = parsedFocus;
       }
     } else {
-      this.focusHour = new Date().getHours();
+      this.focusHour = wsData.focusTime;
     }
 
-    // Load Date
+    // Load Date: Priority is Shared URL -> Today -> Never an old saved date
     if (urlDate) {
       const parsedDate = new Date(urlDate);
       if (!isNaN(parsedDate.getTime())) {
         this.selectedDate = parsedDate;
         this.selectedDate.setHours(0, 0, 0, 0);
       }
+    } else {
+      this.selectedDate = new Date();
+      this.selectedDate.setHours(0, 0, 0, 0);
     }
 
     // Load Duration
     if (urlDuration) {
-      const parsedDur = parseInt(urlDuration);
+      const parsedDur = parseInt(urlDuration, 10);
       if (!isNaN(parsedDur) && parsedDur >= 15 && parsedDur <= 1440) {
         this.meetingDurationMinutes = parsedDur;
       }
     } else {
-      const storedDur = localStorage.getItem('rtz_duration');
-      if (storedDur) {
-        const parsedDur = parseInt(storedDur);
-        if (!isNaN(parsedDur) && parsedDur >= 15 && parsedDur <= 1440) {
-          this.meetingDurationMinutes = parsedDur;
-        }
-      }
+      this.meetingDurationMinutes = wsData.duration;
     }
 
     // Load Time Format
-    const urlFormat = params.get('format');
     if (urlFormat) {
       this.is24HourFormat = urlFormat === '24h';
     } else {
-      const storedFormat = localStorage.getItem('rtz_format');
-      if (storedFormat) {
-        this.is24HourFormat = storedFormat === '24h';
+      this.is24HourFormat = wsData.timeFormat === '24h';
+    }
+
+    // Save initial workspace data if first visit or newly migrated to avoid mismatched states
+    if (this.isFirstVisit) {
+      // First visit has empty workspace, save it immediately
+      this.saveState();
+    } else {
+      // Show top-right premium toast if restored
+      // We wait for the DOM load / render to show the toast
+      const restoreWorkspaceState = () => {
+        // Restore timeline scroll position
+        if (wsData && typeof wsData.timelineScrollLeft === 'number' && this.scrollContainer) {
+          this.scrollContainer.scrollLeft = wsData.timelineScrollLeft;
+        }
+        this.showWorkspaceRestoredToast();
+      };
+      if (document.readyState === 'complete') {
+        restoreWorkspaceState();
       } else {
-        this.is24HourFormat = false;
+        window.addEventListener('load', restoreWorkspaceState);
       }
     }
   }
 
+  private showWorkspaceRestoredToast() {
+    if (!this.workspaceToast) return;
+    this.workspaceToast.classList.remove('opacity-0', '-translate-y-2');
+    this.workspaceToast.classList.add('opacity-100', 'translate-y-0');
+    setTimeout(() => {
+      this.workspaceToast.classList.remove('opacity-100', 'translate-y-0');
+      this.workspaceToast.classList.add('opacity-0', '-translate-y-2');
+    }, 2000);
+  }
+
   private saveState() {
-    const stateObj: SavedState = {
+    const wsData: WorkspaceData = {
       cities: this.selectedCities.map(c => c.timezone),
-      favorites: Array.from(this.favoriteTimezones)
+      favorites: Array.from(this.favoriteTimezones),
+      theme: this.activeTheme,
+      timeFormat: this.is24HourFormat ? '24h' : '12h',
+      duration: this.meetingDurationMinutes,
+      focusTime: this.focusHour,
+      workingHours: null,
+      timelineScrollLeft: this.scrollContainer ? this.scrollContainer.scrollLeft : 0,
+      version: 1,
+      lastUpdated: Date.now()
     };
-    localStorage.setItem('rtz_state', JSON.stringify(stateObj));
-    localStorage.setItem('rtz_favorites', JSON.stringify(Array.from(this.favoriteTimezones)));
-    localStorage.setItem('rtz_duration', this.meetingDurationMinutes.toString());
-    localStorage.setItem('rtz_format', this.is24HourFormat ? '24h' : '12h');
+    try {
+      localStorage.setItem('workspace', JSON.stringify(wsData));
+    } catch (e) {
+      console.error('Failed to write to localStorage:', e);
+    }
     this.updateShareUrl();
+  }
+
+  private saveStateDebounced() {
+    if (this.saveDebounceTimeout) {
+      clearTimeout(this.saveDebounceTimeout);
+    }
+    this.saveDebounceTimeout = window.setTimeout(() => {
+      this.saveState();
+    }, 300);
   }
 
   private updateShareUrl() {
@@ -683,6 +857,67 @@ class RealTimeZonesApp {
 
     // 10. Global keyboard shortcuts
     window.addEventListener('keydown', (e) => this.handleGlobalKeydowns(e));
+
+    // 11. Settings & Reset triggers
+    this.settingsMenuButton?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = this.settingsDropdown.classList.contains('hidden');
+      this.settingsDropdown.classList.toggle('hidden', !isHidden);
+      this.settingsMenuButton.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    });
+
+    window.addEventListener('click', () => {
+      this.settingsDropdown?.classList.add('hidden');
+      this.settingsMenuButton?.setAttribute('aria-expanded', 'false');
+    });
+
+    this.resetWorkspaceButton?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.settingsDropdown.classList.add('hidden');
+      this.settingsMenuButton.setAttribute('aria-expanded', 'false');
+      this.openResetModal();
+    });
+
+    this.btnConfirmCancel?.addEventListener('click', () => this.closeResetModal());
+    this.btnConfirmReset?.addEventListener('click', () => this.confirmResetWorkspace());
+
+    this.resetConfirmModal?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeResetModal();
+        e.preventDefault();
+      }
+
+      if (e.key === 'Tab') {
+        const focusable = this.resetConfirmModal.querySelectorAll('button');
+        if (focusable.length > 0) {
+          const first = focusable[0] as HTMLElement;
+          const last = focusable[focusable.length - 1] as HTMLElement;
+
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              last.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === last) {
+              first.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      }
+    });
+
+    this.resetConfirmModal?.addEventListener('click', (e) => {
+      if (e.target === this.resetConfirmModal) {
+        this.closeResetModal();
+      }
+    });
+
+    // 12. Save timeline position on scroll
+    this.scrollContainer?.addEventListener('scroll', () => {
+      this.saveStateDebounced();
+    });
   }
 
   private setDuration(minutes: number) {
@@ -761,7 +996,9 @@ class RealTimeZonesApp {
     if (e.key === 'Escape') {
       if (isSearchOpen) this.closeSearch();
       if (isKeyHelpOpen) this.keyboardHelpModal.classList.add('hidden');
+      if (this.resetConfirmModal && !this.resetConfirmModal.classList.contains('hidden')) this.closeResetModal();
       this.calendarDropdownMenu.classList.add('hidden');
+      this.settingsDropdown.classList.add('hidden');
     }
 
     // Ctrl+K or Cmd+K: Search Palette
@@ -795,6 +1032,27 @@ class RealTimeZonesApp {
         this.renderOverlapWidget();
       }
     }
+  }
+
+  private openResetModal() {
+    this.activeElementBeforeResetModal = document.activeElement as HTMLElement;
+    this.resetConfirmModal.classList.remove('hidden');
+    this.resetConfirmModal.setAttribute('aria-hidden', 'false');
+    this.btnConfirmCancel.focus();
+  }
+
+  private closeResetModal() {
+    this.resetConfirmModal.classList.add('hidden');
+    this.resetConfirmModal.setAttribute('aria-hidden', 'true');
+    if (this.activeElementBeforeResetModal) {
+      this.activeElementBeforeResetModal.focus();
+    }
+  }
+
+  private confirmResetWorkspace() {
+    localStorage.removeItem('workspace');
+    this.closeResetModal();
+    window.location.href = window.location.pathname; // reload without query string parameters
   }
 
   private adjustDate(days: number) {
@@ -1402,7 +1660,7 @@ class RealTimeZonesApp {
 
   // Render everything
   public render() {
-    this.saveState();
+    this.saveStateDebounced();
 
     // 1. Render Date UI labels
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -1450,12 +1708,14 @@ class RealTimeZonesApp {
     }, true);
 
     // Render other selected cities
-    this.selectedCities.forEach(city => {
-      // Avoid duplicating home timezone if it is added
-      if (city.timezone !== this.homeTimezone) {
-        this.renderRow(city, false);
-      }
+    const nonHomeCities = this.selectedCities.filter(c => c.timezone !== this.homeTimezone);
+    nonHomeCities.forEach(city => {
+      this.renderRow(city, false);
     });
+
+    if (nonHomeCities.length === 0) {
+      this.renderEmptyStateRow();
+    }
 
     // 4. Update dynamic positioning elements
     this.updateFocusIndicatorPosition();
@@ -1468,6 +1728,31 @@ class RealTimeZonesApp {
 
     // 6. Update duration buttons states
     this.updateDurationButtonsUI();
+  }
+
+  private renderEmptyStateRow() {
+    const row = document.createElement('div');
+    row.className = 'flex w-[1408px] shrink-0 h-24 items-center bg-zinc-50/50 dark:bg-zinc-950/10 border-b border-zinc-200/50 dark:border-zinc-800/30';
+    row.innerHTML = `
+      <div class="sticky left-0 w-full md:w-[600px] px-6 py-4 flex items-center gap-4 text-zinc-500 dark:text-zinc-450 z-20">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        <div class="flex flex-col">
+          <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Start by adding teammates or cities you work with.</span>
+          <button type="button" class="trigger-add-city text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline font-mono text-left mt-1 cursor-pointer">
+            Add teammate / city (+ or ⌘K)
+          </button>
+        </div>
+      </div>
+    `;
+
+    const addCityBtn = row.querySelector('.trigger-add-city');
+    if (addCityBtn) {
+      addCityBtn.addEventListener('click', () => this.openSearch());
+    }
+
+    this.timelineRowsContainer.appendChild(row);
   }
 
   private renderRow(city: City, isHome: boolean) {

@@ -296,6 +296,66 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
   <!-- Keyboard Shortcuts reference modal -->
   <KeyboardHelp />
 
+  <!-- Reset Workspace Confirmation Modal -->
+  <div 
+    id="reset-confirm-modal" 
+    class="fixed inset-0 z-50 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 hidden transition-opacity duration-150"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reset-confirm-title"
+    aria-describedby="reset-confirm-description"
+  >
+    <div 
+      class="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 animate-subtle"
+    >
+      <h3 id="reset-confirm-title" class="text-sm font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Reset Workspace?
+      </h3>
+      <p id="reset-confirm-description" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-sans leading-relaxed">
+        This will remove:
+        <span class="block mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 italic">
+          • Saved cities<br />
+          • Preferences<br />
+          • Timeline state
+        </span>
+        <span class="block mt-2 font-medium">Your local timezone will remain.</span>
+      </p>
+
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          id="btn-confirm-cancel" 
+          class="flex-1 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 text-xs font-semibold rounded-md border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          id="btn-confirm-reset" 
+          class="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace Restored Toast -->
+  <div 
+    id="workspace-toast" 
+    class="fixed top-4 right-4 z-50 bg-zinc-900 border border-zinc-800 text-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 px-4 py-2.5 rounded-lg shadow-lg font-mono text-xs flex items-center gap-2 pointer-events-none transition-all duration-300 transform -translate-y-2 opacity-0"
+    role="status"
+    aria-live="polite"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Workspace restored
+  </div>
+
   <!-- Global Tooltip Element -->
   <div 
     id="app-tooltip" 

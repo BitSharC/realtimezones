@@ -82,6 +82,44 @@
         </svg>
       </button>
 
+      <!-- Settings Menu Dropdown Container -->
+      <div class="relative inline-block text-left">
+        <button 
+          type="button" 
+          id="settings-menu-button" 
+          class="p-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all duration-150 cursor-pointer shrink-0" 
+          title="Settings"
+          aria-expanded="false"
+          aria-haspopup="true"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+        <div 
+          id="settings-dropdown" 
+          class="absolute right-0 mt-1.5 w-44 origin-top-right rounded-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg ring-1 ring-black/5 focus:outline-none hidden z-30 font-mono text-[11px]"
+          role="menu"
+          aria-orientation="vertical"
+          aria-labelledby="settings-menu-button"
+        >
+          <div class="py-1" role="none">
+            <button 
+              type="button" 
+              id="reset-workspace-button" 
+              class="w-full text-left px-4 py-2 text-red-650 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer flex items-center gap-1.5 font-bold" 
+              role="menuitem"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+              Reset Workspace
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Share Button -->
       <button 
         type="button" 

@@ -54,13 +54,25 @@ const {
     <!-- Inline script to block rendering and set dark/light theme to avoid FOUC -->
     <script is:inline>
       (() => {
-        const storedTheme = localStorage.getItem('theme');
-        if (storedTheme === 'dark') {
+        let theme = 'system';
+        try {
+          const workspace = localStorage.getItem('workspace');
+          if (workspace) {
+            const data = JSON.parse(workspace);
+            if (data && data.theme) {
+              theme = data.theme;
+            }
+          } else {
+            const legacyTheme = localStorage.getItem('theme');
+            if (legacyTheme) theme = legacyTheme;
+          }
+        } catch (e) {}
+
+        if (theme === 'dark') {
           document.documentElement.classList.add('dark');
-        } else if (storedTheme === 'light') {
+        } else if (theme === 'light') {
           document.documentElement.classList.remove('dark');
         } else {
-          // 'system' or unset
           const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           document.documentElement.classList.toggle('dark', isDark);
         }
