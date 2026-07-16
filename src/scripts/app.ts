@@ -1132,11 +1132,11 @@ class RealTimeZonesApp {
   }
 
   private startTimeTicker() {
-    // Update active vertical line position every minute
+    // Update active vertical line position and row clock times every second for realtime precision
     setInterval(() => {
       this.updateCurrentTimeIndicator();
       this.updateRowClockTimes();
-    }, 60000);
+    }, 1000);
   }
 
   // Search Logic
@@ -1401,11 +1401,12 @@ class RealTimeZonesApp {
     const homeLocalTime = new Date(now.getTime() + homeOffset * 60000);
     const hours = homeLocalTime.getUTCHours();
     const minutes = homeLocalTime.getUTCMinutes();
+    const seconds = homeLocalTime.getUTCSeconds();
     
     const blockWidth = 48;
     const headerCol = this.scrollContainer?.querySelector('.sticky') as HTMLElement;
     const leftMargin = headerCol ? headerCol.offsetWidth : 256;
-    const totalMinutes = hours * 60 + minutes;
+    const totalMinutes = hours * 60 + minutes + (seconds / 60);
     const indicatorLeft = leftMargin + (totalMinutes / 1440) * (24 * blockWidth);
     
     this.currentTimeLine.style.left = `${indicatorLeft}px`;
@@ -1416,15 +1417,14 @@ class RealTimeZonesApp {
 
   private updateRowClockTimes() {
     const rows = this.timelineRowsContainer.querySelectorAll('.timeline-row');
-    const baseDate = new Date(this.selectedDate);
-    baseDate.setHours(this.focusHour, 0, 0, 0);
+    const now = new Date();
 
     rows.forEach(row => {
       const tz = row.getAttribute('data-timezone');
       if (!tz) return;
 
-      const offsetMinutes = getTimezoneOffset(tz, baseDate);
-      const localTime = new Date(baseDate.getTime() + offsetMinutes * 60000);
+      const offsetMinutes = getTimezoneOffset(tz, now);
+      const localTime = new Date(now.getTime() + offsetMinutes * 60000);
       const localHour = localTime.getUTCHours();
       const localMin = localTime.getUTCMinutes();
       
