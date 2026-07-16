@@ -1,0 +1,426 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import CitySearch from '../../components/CitySearch.astro';
+import KeyboardHelp from '../../components/KeyboardHelp.astro';
+import { cities } from '../../data/cities';
+
+export function getStaticPaths() {
+  const hubs = [
+    'seoul', 'mumbai', 'kathmandu', 'tokyo', 'new-york', 'london',
+    'san-francisco', 'singapore', 'sydney', 'berlin', 'dubai', 'paris'
+  ];
+  return hubs.map(city => ({
+    params: { city }
+  }));
+}
+
+const { city = '' } = Astro.params;
+const citySlug = city.toLowerCase();
+
+// Look up in static cities database
+const cityData = cities.find(c => c.name.toLowerCase().replace(/[\s_]+/g, '-') === citySlug) || {
+  name: city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+  country: 'Global Hub',
+  timezone: 'UTC',
+  population: 0
+};
+
+// Help helper for timezone offset at compile-time (SSG)
+function getTimezoneOffset(timezone: string, date: Date = new Date()): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(date);
+    const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    
+    const year = parseInt(partMap.year);
+    const month = parseInt(partMap.month) - 1;
+    const day = parseInt(partMap.day);
+    const rawHour = parseInt(partMap.hour);
+    const hour = rawHour === 24 ? 0 : rawHour;
+    const minute = parseInt(partMap.minute);
+    const second = parseInt(partMap.second);
+    
+    const localTimeAsUTC = Date.UTC(year, month, day, hour, minute, second);
+    const utcTime = Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds()
+    );
+    
+    return Math.round((localTimeAsUTC - utcTime) / 60000);
+  } catch (e) {
+    return 0;
+  }
+}
+
+function formatOffset(offsetMinutes: number): string {
+  const absOffset = Math.abs(offsetMinutes);
+  const hours = Math.floor(absOffset / 60);
+  const minutes = absOffset % 60;
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+const buildDate = new Date();
+const currentOffset = getTimezoneOffset(cityData.timezone, buildDate);
+const utcOffsetStr = `UTC${formatOffset(currentOffset)}`;
+
+// Abbreviation formatting
+function getTimezoneAbbreviation(timezone: string, date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    });
+    const parts = formatter.formatToParts(date);
+    return parts.find(p => p.type === 'timeZoneName')?.value || '';
+  } catch (e) {
+    return 'UTC';
+  }
+}
+const tzAbbreviation = getTimezoneAbbreviation(cityData.timezone, buildDate);
+
+// DST status details
+function getDSTInfo(timezone: string, date: Date = new Date()) {
+  try {
+    const year = date.getFullYear();
+    const jan = new Date(year, 0, 1);
+    const jul = new Date(year, 6, 1);
+    const janOffset = getTimezoneOffset(timezone, jan);
+    const julOffset = getTimezoneOffset(timezone, jul);
+    
+    const hasDST = janOffset !== julOffset;
+    if (!hasDST) {
+      return {
+        hasDST: false,
+        isCurrentlyDST: false,
+        label: 'Standard Time (No DST)'
+      };
+    }
+    
+    const maxOffset = Math.max(janOffset, julOffset);
+    const currentOffset = getTimezoneOffset(timezone, date);
+    const isCurrentlyDST = currentOffset === maxOffset;
+    
+    return {
+      hasDST: true,
+      isCurrentlyDST,
+      label: isCurrentlyDST ? 'Daylight Saving Time (DST) Active' : 'Standard Time (DST Inactive)'
+    };
+  } catch (e) {
+    return {
+      hasDST: false,
+      isCurrentlyDST: false,
+      label: 'Standard Time'
+    };
+  }
+}
+const dstInfo = getDSTInfo(cityData.timezone, buildDate);
+
+// Page title & description
+const pageTitle = `Current Time in ${cityData.name} | Exact Local Clock & Timezone | RealTimeZones`;
+const pageDescription = `What time is it in ${cityData.name}? Get the exact current local time, timezone offsets, daylight savings info, and instantly plan meetings with team members here.`;
+const canonicalUrl = `https://realtimezones.com/timezone/${citySlug}`;
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="dark bg-black text-white min-h-screen flex flex-col font-sans selection:bg-white selection:text-black">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[1400px] w-full mx-auto px-4 md:px-8 py-12 flex flex-col items-center justify-center gap-8 relative select-none">
+      
+      <!-- Premium Atmospheric Mesh Gradients -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute top-[10%] left-1/2 -translate-x-1/2 w-[70%] h-[50%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.08)_0%,rgba(0,0,0,0)_60%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.15)_0%,rgba(0,0,0,0)_60%)] transition-opacity duration-500"></div>
+      </div>
+
+      <!-- Hero Section Title -->
+      <section class="text-center flex flex-col items-center gap-3 mt-6">
+        <h2 class="text-3xl md:text-5xl font-semibold tracking-tight text-white leading-tight">
+          Current Time in {cityData.name}, {cityData.country}
+        </h2>
+        <p class="text-xs md:text-sm text-zinc-400 font-sans max-w-lg">
+          Accurate local clock, active timezone identifier, and daylight saving status for {cityData.name}.
+        </p>
+      </section>
+
+      <!-- Center Clock Card -->
+      <section class="w-full max-w-2xl flex justify-center px-4">
+        <div class="bg-[#0a0a0a] border border-[#262626] text-white rounded-xl p-8 md:p-12 shadow-2xl w-full flex flex-col items-center gap-8 relative overflow-hidden transition-all duration-300 hover:border-[#404040]">
+          
+          <!-- Pulsing Status indicator -->
+          <div class="flex items-center justify-between w-full border-b border-[#262626] pb-4">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">{cityData.name} Clock</span>
+            <span class="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 select-none">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0070f3] opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-[#0070f3]"></span>
+              </span>
+              LIVE
+            </span>
+          </div>
+
+          <!-- Massive Local Time Display -->
+          <div class="flex flex-col items-center gap-3">
+            <div id="live-clock" class="font-mono tracking-tighter font-bold select-all text-[#ffffff]" style="font-size: clamp(3.5rem, 9vw, 6.5rem); line-height: 1;" data-timezone={cityData.timezone}>
+              --:--:--
+            </div>
+            <div id="live-date" class="text-sm font-mono text-zinc-400 mt-2 uppercase tracking-wider">
+              --------
+            </div>
+          </div>
+
+          <!-- Horizontal Divider -->
+          <div class="w-full border-t border-[#262626]"></div>
+
+          <!-- Sub-details info grid -->
+          <div class="w-full grid grid-cols-2 gap-6 text-center">
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">Timezone Offset</span>
+              <span id="tz-info" class="text-sm font-semibold text-zinc-200 font-mono">
+                {tzAbbreviation} ({utcOffsetStr})
+              </span>
+            </div>
+            <div class="flex flex-col items-center">
+              <span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">DST Observance</span>
+              <span id="dst-info" class="text-sm font-semibold text-zinc-200">
+                {dstInfo.label}
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Funnel CTA Row -->
+      <section class="flex flex-col items-center justify-center gap-4 mt-8">
+        <a 
+          href={`/?cities=${encodeURIComponent(cityData.name)}`}
+          class="group inline-flex items-center gap-2.5 px-8 py-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-semibold text-sm md:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-150 transform hover:-translate-y-0.5 cursor-pointer"
+        >
+          Schedule a Meeting with {cityData.name}
+          <span class="transition-transform group-hover:translate-x-1 font-sans">➔</span>
+        </a>
+      </section>
+
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-[#262626] py-6 bg-[#050505] transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-505 font-mono select-none uppercase tracking-wider">
+        <div>
+          RealTimeZones • Clean & Fast Time Sync
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-white transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-white transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+
+  <!-- Reset Workspace Confirmation Modal -->
+  <div 
+    id="reset-confirm-modal" 
+    class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 hidden transition-opacity duration-150"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reset-confirm-title"
+    aria-describedby="reset-confirm-description"
+  >
+    <div 
+      class="bg-[#0a0a0a] w-full max-w-sm rounded-xl border border-[#262626] shadow-2xl overflow-hidden p-6"
+    >
+      <h3 id="reset-confirm-title" class="text-sm font-semibold text-white flex items-center gap-2 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Reset Workspace?
+      </h3>
+      <p id="reset-confirm-description" class="text-xs text-zinc-400 mb-6 font-sans leading-relaxed">
+        This will remove:
+        <span class="block mt-1 pl-3 border-l border-zinc-800 italic">
+          • Saved cities<br />
+          • Preferences<br />
+          • Timeline state
+        </span>
+        <span class="block mt-2 font-medium">Your local timezone will remain.</span>
+      </p>
+
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          id="btn-confirm-cancel" 
+          class="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold rounded-md border border-zinc-800 transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          id="btn-confirm-reset" 
+          class="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace Restored Toast -->
+  <div 
+    id="workspace-toast" 
+    class="fixed top-4 right-4 z-50 bg-zinc-900 border border-zinc-800 text-zinc-50 px-4 py-2.5 rounded-lg shadow-lg font-mono text-xs flex items-center gap-2 pointer-events-none transition-all duration-300 transform -translate-y-2 opacity-0"
+    role="status"
+    aria-live="polite"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Workspace restored
+  </div>
+
+  <!-- Global Tooltip Element -->
+  <div 
+    id="app-tooltip" 
+    class="fixed z-50 pointer-events-none opacity-0 scale-95 transition-all duration-[120ms] ease-out bg-zinc-950/95 border border-zinc-800 text-zinc-100 p-2.5 rounded-lg shadow-lg font-mono text-[10px] leading-relaxed max-w-[200px]"
+  >
+  </div>
+</Layout>
+
+<!-- JSON-LD Place and FAQ Schema blocks for Programmatic SEO -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Place",
+  "name": cityData.name,
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": cityData.name,
+    "addressCountry": cityData.country
+  },
+  "additionalProperty": [
+    {
+      "@type": "PropertyValue",
+      "name": "Timezone",
+      "value": cityData.timezone
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "UTC Offset",
+      "value": formatOffset(getTimezoneOffset(cityData.timezone))
+    },
+    {
+      "@type": "PropertyValue",
+      "name": "Daylight Saving Time Status",
+      "value": dstInfo.label
+    }
+  ]
+})} />
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": `What is the current local time in ${cityData.name}?`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": `The current local time in ${cityData.name}, ${cityData.country} is actively displayed on our exact live timezone clock page. It conforms to the ${cityData.timezone} IANA timezone identifier.`
+      }
+    },
+    {
+      "@type": "Question",
+      "name": `Does ${cityData.name} observe Daylight Saving Time?`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": `${cityData.name} is currently observing ${dstInfo.label}. The direct timezone offset relation is ${utcOffsetStr}.`
+      }
+    }
+  ]
+})} />
+
+<!-- Client Orchestrator Scripts Bundle (handles header navigation settings & command shortcuts) -->
+<script src="../../scripts/app.ts"></script>
+
+<!-- Custom Scoped Ticking Engine for local clock widget -->
+<script>
+  function updateTimezoneClock() {
+    let is24h = false;
+    try {
+      const ws = localStorage.getItem('workspace');
+      if (ws) {
+        const data = JSON.parse(ws);
+        is24h = data && data.timeFormat === '24h';
+      }
+    } catch (e) {}
+
+    const now = new Date();
+    const clockEl = document.getElementById('live-clock');
+    if (!clockEl) return;
+
+    const tz = clockEl.getAttribute('data-timezone');
+    if (!tz) return;
+
+    try {
+      // Format time digits
+      const timeStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: !is24h
+      }).format(now);
+      
+      clockEl.textContent = timeStr;
+
+      // Format date label
+      const dateEl = document.getElementById('live-date');
+      if (dateEl) {
+        dateEl.textContent = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }).format(now);
+      }
+    } catch (e) {
+      console.error('Ticking engine clock update error:', e);
+    }
+  }
+
+  // Initial render on page load and launch ticker
+  updateTimezoneClock();
+  setInterval(updateTimezoneClock, 1000);
+
+  // Instantly listen for time format switches on header buttons
+  document.getElementById('time-format-12h')?.addEventListener('click', () => setTimeout(updateTimezoneClock, 50));
+  document.getElementById('time-format-24h')?.addEventListener('click', () => setTimeout(updateTimezoneClock, 50));
+
+  // Footer helper shortcuts modal binding
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>

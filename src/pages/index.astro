@@ -3,6 +3,16 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import CitySearch from '../components/CitySearch.astro';
 import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const popularConversions = ['est-to-ist', 'pst-to-ist', 'gmt-to-est', 'london-to-new-york'];
+const worldCities = ['london', 'new-york', 'tokyo', 'seoul', 'mumbai'];
+
+const capitalizeCity = (slug: string) => {
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 ---
 
 <Layout>
@@ -277,15 +287,61 @@ import KeyboardHelp from '../components/KeyboardHelp.astro';
     </main>
 
     <!-- Footer Area -->
-    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
-      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
-        <div>
-          RealTimeZones • Clean & Fast Time Sync
+    <footer class="border-t border-[#262626] bg-[#000000] text-sm text-[#888888] pt-12 pb-8 px-6 mt-auto">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <!-- Column 1: Popular Conversions -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Popular Conversions</h3>
+          <div class="flex flex-col gap-2.5">
+            {popularConversions.map((slug) => (
+              <a 
+                href={`/convert/${slug}`} 
+                class="hover:text-[#ffffff] transition-colors duration-200 font-mono text-xs text-[#888888] w-fit"
+              >
+                {slug}
+              </a>
+            ))}
+          </div>
         </div>
-        <div class="flex items-center gap-4">
-          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
-          <span>•</span>
-          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+
+        <!-- Column 2: World Cities -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">World Cities</h3>
+          <div class="flex flex-col gap-2.5">
+            {worldCities.map((slug) => (
+              <a 
+                href={`/timezone/${slug}`} 
+                class="hover:text-[#ffffff] transition-colors duration-200 font-mono text-xs text-[#888888] w-fit"
+              >
+                {capitalizeCity(slug)}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- Column 3: Branding & Meta -->
+        <div class="col-span-2 md:col-span-1 flex flex-col gap-3">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">RealTimeZones</h3>
+          <div class="text-[#888888] text-xs font-mono">© 2026 RealTimeZones</div>
+          <p class="text-xs text-[#444444] font-sans leading-relaxed">
+            Blazing fast global coordination built on local-first privacy.
+          </p>
+          <div class="flex items-center gap-3 mt-4 text-xs font-mono">
+            <button 
+              type="button" 
+              class="trigger-add-city hover:text-[#ffffff] transition-colors duration-200 cursor-pointer"
+            >
+              Search (⌘K)
+            </button>
+            <span class="text-[#444444]">•</span>
+            <button 
+              type="button" 
+              id="trigger-keyboard-help-footer" 
+              class="hover:text-[#ffffff] transition-colors duration-200 cursor-pointer"
+            >
+              Shortcuts
+            </button>
+          </div>
         </div>
       </div>
     </footer>
