@@ -1,0 +1,399 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import CitySearch from '../../components/CitySearch.astro';
+import KeyboardHelp from '../../components/KeyboardHelp.astro';
+
+// 1. Static Paths Generation for popular pairings
+export function getStaticPaths() {
+  const pairings = [
+    { from: 'est', to: 'ist' },
+    { from: 'ist', to: 'est' },
+    { from: 'gmt', to: 'est' },
+    { from: 'est', to: 'gmt' },
+    { from: 'pst', to: 'est' },
+    { from: 'est', to: 'pst' },
+    { from: 'gmt', to: 'ist' },
+    { from: 'ist', to: 'gmt' },
+    { from: 'london', to: 'new-york' },
+    { from: 'new-york', to: 'london' },
+    { from: 'pst', to: 'ist' },
+    { from: 'ist', to: 'pst' },
+    { from: 'est', to: 'cet' },
+    { from: 'cet', to: 'est' },
+    { from: 'gmt', to: 'cet' },
+    { from: 'cet', to: 'gmt' },
+    { from: 'ist', to: 'sgt' },
+    { from: 'sgt', to: 'ist' },
+    { from: 'aest', to: 'pst' },
+    { from: 'pst', to: 'aest' }
+  ];
+  return pairings.map(({ from, to }) => ({
+    params: { from, to }
+  }));
+}
+
+// 2. Resolve parameters and lookup information
+const { from = '', to = '' } = Astro.params;
+const fromKey = from.toLowerCase();
+const toKey = to.toLowerCase();
+
+const zoneMapping: Record<string, { name: string; timezone: string; cityName: string }> = {
+  'est': { name: 'EST', timezone: 'America/New_York', cityName: 'New York' },
+  'ist': { name: 'IST', timezone: 'Asia/Kolkata', cityName: 'Mumbai' },
+  'gmt': { name: 'GMT', timezone: 'Etc/GMT', cityName: 'GMT' },
+  'pst': { name: 'PST', timezone: 'America/Los_Angeles', cityName: 'Los Angeles' },
+  'london': { name: 'London', timezone: 'Europe/London', cityName: 'London' },
+  'new-york': { name: 'New York', timezone: 'America/New_York', cityName: 'New York' },
+  'cet': { name: 'CET', timezone: 'Europe/Paris', cityName: 'Paris' },
+  'sgt': { name: 'SGT', timezone: 'Asia/Singapore', cityName: 'Singapore' },
+  'aest': { name: 'AEST', timezone: 'Australia/Sydney', cityName: 'Sydney' }
+};
+
+const fromZone = zoneMapping[fromKey] || { name: from.toUpperCase(), timezone: 'UTC', cityName: from.toUpperCase() };
+const toZone = zoneMapping[toKey] || { name: to.toUpperCase(), timezone: 'UTC', cityName: to.toUpperCase() };
+
+// 3. Helper to get offset at build time
+function getTimezoneOffset(timezone: string, date: Date = new Date()): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(date);
+    const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    
+    const year = parseInt(partMap.year);
+    const month = parseInt(partMap.month) - 1;
+    const day = parseInt(partMap.day);
+    const rawHour = parseInt(partMap.hour);
+    const hour = rawHour === 24 ? 0 : rawHour;
+    const minute = parseInt(partMap.minute);
+    const second = parseInt(partMap.second);
+    
+    const localTimeAsUTC = Date.UTC(year, month, day, hour, minute, second);
+    const utcTime = Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds()
+    );
+    
+    return Math.round((localTimeAsUTC - utcTime) / 60000);
+  } catch (e) {
+    return 0;
+  }
+}
+
+const buildDate = new Date();
+const fromOffset = getTimezoneOffset(fromZone.timezone, buildDate);
+const toOffset = getTimezoneOffset(toZone.timezone, buildDate);
+const diffMinutes = toOffset - fromOffset;
+const diffHours = diffMinutes / 60;
+
+const fromName = fromZone.name;
+const toName = toZone.name;
+const fromCity = fromZone.cityName;
+const toCity = toZone.cityName;
+
+let gapDescription = '';
+if (diffHours === 0) {
+  gapDescription = `${toName} is in the same timezone as ${fromName}.`;
+} else {
+  const absDiff = Math.abs(diffHours);
+  const hourWord = absDiff === 1 ? 'hour' : 'hours';
+  const relation = diffHours > 0 ? 'ahead of' : 'behind';
+  gapDescription = `${toName} is ${absDiff} ${hourWord} ${relation} ${fromName}.`;
+}
+
+// SEO Meta configurations
+const pageTitle = `Convert ${fromName} to ${toName} | RealTimeZones`;
+const pageDescription = `Convert ${fromName} time to ${toName} instantly. See current time differences, overlapping working hours, and schedule meetings seamlessly.`;
+const pageUrl = `https://realtimezones.com/convert/${fromKey}-to-${toKey}`;
+---
+
+<Layout title={pageTitle} description={pageDescription} url={pageUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[1400px] w-full mx-auto px-4 md:px-8 py-12 flex flex-col gap-8 relative select-none">
+      
+      <!-- Premium Atmospheric Mesh Gradients -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute -top-[30%] -left-[10%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)] transition-opacity duration-500"></div>
+        <div class="absolute -top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(121,40,202,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(121,40,202,0.12)_0%,rgba(0,0,0,0)_70%)] transition-opacity duration-500"></div>
+      </div>
+
+      <!-- Hero Section Title -->
+      <section class="text-center flex flex-col items-center gap-4 mt-6">
+        <h2 class="text-4xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          Convert {fromName} to {toName}.
+        </h2>
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 font-sans max-w-xl">
+          Track real-time timezone conversions, calculate work overlap, and export schedules seamlessly between {fromCity} and {toCity}.
+        </p>
+      </section>
+
+      <!-- Clocks Display Section -->
+      <section class="w-full flex flex-col gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full relative">
+          <!-- Left Clock Card (From) -->
+          <div class="bg-[#0a0a0a] border border-[#262626] text-white rounded-xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300 hover:border-[#404040]">
+            <div class="flex items-center justify-between mb-6">
+              <span class="text-xs font-mono uppercase tracking-widest text-zinc-400">{fromName} CLOCK</span>
+              <span class="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 select-none">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0070f3] opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-[#0070f3]"></span>
+                </span>
+                LIVE
+              </span>
+            </div>
+            <div class="text-zinc-500 text-[10px] font-mono mb-2 uppercase tracking-widest">{fromCity}</div>
+            <div id="from-clock-time" class="font-mono tracking-tight text-5xl md:text-6xl font-bold select-all text-white" data-timezone={fromZone.timezone}>
+              --:--:--
+            </div>
+            <div class="mt-4 text-xs font-mono text-zinc-500" id="from-clock-date">
+              --------
+            </div>
+          </div>
+
+          <!-- Right Clock Card (To) -->
+          <div class="bg-[#0a0a0a] border border-[#262626] text-white rounded-xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300 hover:border-[#404040]">
+            <div class="flex items-center justify-between mb-6">
+              <span class="text-xs font-mono uppercase tracking-widest text-zinc-400">{toName} CLOCK</span>
+              <span class="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 select-none">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0070f3] opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-[#0070f3]"></span>
+                </span>
+                LIVE
+              </span>
+            </div>
+            <div class="text-zinc-500 text-[10px] font-mono mb-2 uppercase tracking-widest">{toCity}</div>
+            <div id="to-clock-time" class="font-mono tracking-tight text-5xl md:text-6xl font-bold select-all text-white" data-timezone={toZone.timezone}>
+              --:--:--
+            </div>
+            <div class="mt-4 text-xs font-mono text-zinc-500" id="to-clock-date">
+              --------
+            </div>
+          </div>
+        </div>
+
+        <!-- Gap Description Insight Pill -->
+        <div class="flex flex-col items-center gap-6 mt-4">
+          <p class="text-center text-xs md:text-sm font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-zinc-800/80 px-6 py-3 rounded-full shadow-2xs">
+            💡 <span class="ml-1 text-zinc-900 dark:text-zinc-200 font-semibold">{gapDescription}</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- CTA Redirection Grid Planner -->
+      <section class="flex flex-col items-center justify-center gap-4 mt-8">
+        <a 
+          href={`/?cities=${encodeURIComponent(fromCity)},${encodeURIComponent(toCity)}`}
+          class="group inline-flex items-center gap-2.5 px-8 py-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm md:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-150 cursor-pointer transform hover:-translate-y-0.5"
+        >
+          Open in Interactive Grid Planner
+          <span class="transition-transform group-hover:translate-x-1 font-sans">➔</span>
+        </a>
+        <p class="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">
+          Load standard timelines & plan team meetings
+        </p>
+      </section>
+
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div>
+          RealTimeZones • Clean & Fast Time Sync
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+
+  <!-- Reset Workspace Confirmation Modal -->
+  <div 
+    id="reset-confirm-modal" 
+    class="fixed inset-0 z-50 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 hidden transition-opacity duration-150"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reset-confirm-title"
+    aria-describedby="reset-confirm-description"
+  >
+    <div 
+      class="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6"
+    >
+      <h3 id="reset-confirm-title" class="text-sm font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Reset Workspace?
+      </h3>
+      <p id="reset-confirm-description" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-sans leading-relaxed">
+        This will remove:
+        <span class="block mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 italic">
+          • Saved cities<br />
+          • Preferences<br />
+          • Timeline state
+        </span>
+        <span class="block mt-2 font-medium">Your local timezone will remain.</span>
+      </p>
+
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          id="btn-confirm-cancel" 
+          class="flex-1 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 text-xs font-semibold rounded-md border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          id="btn-confirm-reset" 
+          class="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace Restored Toast -->
+  <div 
+    id="workspace-toast" 
+    class="fixed top-4 right-4 z-50 bg-zinc-900 border border-zinc-800 text-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 px-4 py-2.5 rounded-lg shadow-lg font-mono text-xs flex items-center gap-2 pointer-events-none transition-all duration-300 transform -translate-y-2 opacity-0"
+    role="status"
+    aria-live="polite"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Workspace restored
+  </div>
+
+  <!-- Global Tooltip Element -->
+  <div 
+    id="app-tooltip" 
+    class="fixed z-50 pointer-events-none opacity-0 scale-95 transition-all duration-[120ms] ease-out bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-800 dark:border-zinc-800 text-zinc-100 p-2.5 rounded-lg shadow-lg font-mono text-[10px] leading-relaxed max-w-[200px]"
+  >
+  </div>
+</Layout>
+
+<!-- JSON-LD FAQ Schema block for Programmatic SEO -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": `What is the time difference between ${fromName} and ${toName}?`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": `${gapDescription} Use our interactive grid planner to coordinate meetings across these time zones.`
+      }
+    },
+    {
+      "@type": "Question",
+      "name": `How do I convert ${fromCity} time to ${toCity} time?`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": `To convert times between ${fromCity} and ${toCity}, simple note that ${gapDescription} Use RealTimeZones to visualize the overlap in real-time.`
+      }
+    }
+  ]
+})} />
+
+<!-- Client Orchestrator Scripts Bundle (Handles layout themes, formatting, search modal trigger, etc.) -->
+<script src="../../scripts/app.ts"></script>
+
+<!-- Custom Scoped Ticking engine for clock widgets -->
+<script>
+  function updateConverterClocks() {
+    let is24h = false;
+    try {
+      const ws = localStorage.getItem('workspace');
+      if (ws) {
+        const data = JSON.parse(ws);
+        is24h = data && data.timeFormat === '24h';
+      }
+    } catch (e) {}
+
+    const now = new Date();
+
+    const fromEl = document.getElementById('from-clock-time');
+    const toEl = document.getElementById('to-clock-time');
+
+    [fromEl, toEl].forEach(el => {
+      if (!el) return;
+      const tz = el.getAttribute('data-timezone');
+      if (!tz) return;
+
+      try {
+        // Render current time
+        const timeStr = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: !is24h
+        }).format(now);
+
+        el.textContent = timeStr;
+
+        // Render current date
+        const dateEl = el.id === 'from-clock-time' 
+          ? document.getElementById('from-clock-date') 
+          : document.getElementById('to-clock-date');
+        
+        if (dateEl) {
+          dateEl.textContent = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }).format(now);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }
+
+  // Initial call and start highly optimized tick interval
+  updateConverterClocks();
+  setInterval(updateConverterClocks, 1000);
+
+  // Instantly listen for time format switches on header buttons
+  document.getElementById('time-format-12h')?.addEventListener('click', () => setTimeout(updateConverterClocks, 50));
+  document.getElementById('time-format-24h')?.addEventListener('click', () => setTimeout(updateConverterClocks, 50));
+  
+  // Footer helper shortcuts modal binding
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>

@@ -675,77 +675,89 @@ class RealTimeZonesApp {
     });
 
     // 2. Search Modal interactions
-    this.searchInput.addEventListener('input', () => this.handleSearchInput());
-    this.searchModal.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
-    
-    // Close modal clicks
-    this.searchModal.addEventListener('click', (e) => {
-      if (e.target === this.searchModal || (e.target as HTMLElement).closest('.close-modal')) {
-        this.closeSearch();
-      }
-    });
+    if (this.searchInput && this.searchModal) {
+      this.searchInput.addEventListener('input', () => this.handleSearchInput());
+      this.searchModal.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
+      
+      // Close modal clicks
+      this.searchModal.addEventListener('click', (e) => {
+        if (e.target === this.searchModal || (e.target as HTMLElement).closest('.close-modal')) {
+          this.closeSearch();
+        }
+      });
+    }
 
     // 3. Date switcher
     document.getElementById('prev-day')?.addEventListener('click', () => this.adjustDate(-1));
     document.getElementById('next-day')?.addEventListener('click', () => this.adjustDate(1));
     document.getElementById('reset-now')?.addEventListener('click', () => this.resetToNow());
 
-    this.selectedDateLabel.addEventListener('click', () => {
-      this.datePickerInput.showPicker();
-    });
-    this.datePickerInput.addEventListener('change', () => {
-      if (this.datePickerInput.value) {
-        this.selectedDate = new Date(this.datePickerInput.value);
-        this.selectedDate.setHours(0, 0, 0, 0);
-        this.saveState();
-        this.render();
-      }
-    });
+    if (this.selectedDateLabel && this.datePickerInput) {
+      this.selectedDateLabel.addEventListener('click', () => {
+        this.datePickerInput.showPicker();
+      });
+      this.datePickerInput.addEventListener('change', () => {
+        if (this.datePickerInput.value) {
+          this.selectedDate = new Date(this.datePickerInput.value);
+          this.selectedDate.setHours(0, 0, 0, 0);
+          this.saveState();
+          this.render();
+        }
+      });
+    }
 
     // 4. Focus Scrubber
-    this.focusScrubberInput.addEventListener('input', () => {
-      this.focusIndicator.classList.add('dragging');
-      this.focusHour = parseInt(this.focusScrubberInput.value);
-      this.updateFocusIndicatorPosition();
-      this.updateFocusReadout();
-      this.updateShareUrl();
-      this.renderOverlapWidget();
-      this.updateRowClockTimes();
-    });
-    this.focusScrubberInput.addEventListener('pointerdown', () => {
-      this.focusIndicator.classList.add('dragging');
-    });
-    this.focusScrubberInput.addEventListener('pointerup', () => {
-      this.focusIndicator.classList.remove('dragging');
-    });
-    this.focusScrubberInput.addEventListener('touchstart', () => {
-      this.focusIndicator.classList.add('dragging');
-    });
-    this.focusScrubberInput.addEventListener('touchend', () => {
-      this.focusIndicator.classList.remove('dragging');
-    });
+    if (this.focusScrubberInput) {
+      this.focusScrubberInput.addEventListener('input', () => {
+        if (this.focusIndicator) this.focusIndicator.classList.add('dragging');
+        this.focusHour = parseInt(this.focusScrubberInput.value);
+        this.updateFocusIndicatorPosition();
+        this.updateFocusReadout();
+        this.updateShareUrl();
+        this.renderOverlapWidget();
+        this.updateRowClockTimes();
+      });
+      this.focusScrubberInput.addEventListener('pointerdown', () => {
+        if (this.focusIndicator) this.focusIndicator.classList.add('dragging');
+      });
+      this.focusScrubberInput.addEventListener('pointerup', () => {
+        if (this.focusIndicator) this.focusIndicator.classList.remove('dragging');
+      });
+      this.focusScrubberInput.addEventListener('touchstart', () => {
+        if (this.focusIndicator) this.focusIndicator.classList.add('dragging');
+      });
+      this.focusScrubberInput.addEventListener('touchend', () => {
+        if (this.focusIndicator) this.focusIndicator.classList.remove('dragging');
+      });
+    }
 
     // 5. Timeline scrubbing via mouse drag/touch
-    this.timelineRowsContainer.addEventListener('pointerdown', (e) => this.handleTimelinePointerDown(e));
-    window.addEventListener('pointermove', (e) => this.handleTimelinePointerMove(e));
-    window.addEventListener('pointerup', (e) => this.handleTimelinePointerUp(e));
+    if (this.timelineRowsContainer) {
+      this.timelineRowsContainer.addEventListener('pointerdown', (e) => this.handleTimelinePointerDown(e));
+      window.addEventListener('pointermove', (e) => this.handleTimelinePointerMove(e));
+      window.addEventListener('pointerup', (e) => this.handleTimelinePointerUp(e));
+    }
 
     // 6. Share trigger
-    this.shareButton.addEventListener('click', () => this.copyShareLink());
+    if (this.shareButton) {
+      this.shareButton.addEventListener('click', () => this.copyShareLink());
+    }
 
     // 7. Calendar Export Dropdown
-    this.calendarDropdownButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.calendarDropdownMenu.classList.toggle('hidden');
-    });
-    window.addEventListener('click', () => {
-      this.calendarDropdownMenu.classList.add('hidden');
-    });
-    
-    document.getElementById('export-google')?.addEventListener('click', () => this.exportCalendar('google'));
-    document.getElementById('export-outlook')?.addEventListener('click', () => this.exportCalendar('outlook'));
-    document.getElementById('export-apple')?.addEventListener('click', () => this.exportCalendar('apple'));
-    document.getElementById('export-ics')?.addEventListener('click', () => this.exportCalendar('ics'));
+    if (this.calendarDropdownButton && this.calendarDropdownMenu) {
+      this.calendarDropdownButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.calendarDropdownMenu.classList.toggle('hidden');
+      });
+      window.addEventListener('click', () => {
+        this.calendarDropdownMenu.classList.add('hidden');
+      });
+      
+      document.getElementById('export-google')?.addEventListener('click', () => this.exportCalendar('google'));
+      document.getElementById('export-outlook')?.addEventListener('click', () => this.exportCalendar('outlook'));
+      document.getElementById('export-apple')?.addEventListener('click', () => this.exportCalendar('apple'));
+      document.getElementById('export-ics')?.addEventListener('click', () => this.exportCalendar('ics'));
+    }
 
     // 8. Theme toggles
     const themeButtons = document.querySelectorAll('.theme-btn');
@@ -794,84 +806,94 @@ class RealTimeZonesApp {
     });
 
     // 8d. Mouse wheel scrolling and scrubbing
-    this.scrollContainer.addEventListener('wheel', (e) => {
-      if (e.deltaY !== 0 && e.deltaX === 0) {
-        e.preventDefault();
-        this.scrollContainer.scrollLeft += e.deltaY;
-      }
-    }, { passive: false });
-
-    this.timelineRowsContainer.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      this.focusIndicator.classList.add('dragging');
-      if (e.deltaY > 0) {
-        this.focusHour = (this.focusHour + 1) % 24;
-      } else {
-        this.focusHour = (this.focusHour - 1 + 24) % 24;
-      }
-      this.focusScrubberInput.value = this.focusHour.toString();
-      this.updateFocusIndicatorPosition();
-      this.updateFocusReadout();
-      this.updateShareUrl();
-      this.renderOverlapWidget();
-      this.updateRowClockTimes();
-      
-      // Restore animation transition after a short tick
-      setTimeout(() => {
-        if (!this.isDragging) {
-          this.focusIndicator.classList.remove('dragging');
+    if (this.scrollContainer) {
+      this.scrollContainer.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0 && e.deltaX === 0) {
+          e.preventDefault();
+          this.scrollContainer.scrollLeft += e.deltaY;
         }
-      }, 50);
-    }, { passive: false });
+      }, { passive: false });
+    }
+
+    if (this.timelineRowsContainer) {
+      this.timelineRowsContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (this.focusIndicator) this.focusIndicator.classList.add('dragging');
+        if (e.deltaY > 0) {
+          this.focusHour = (this.focusHour + 1) % 24;
+        } else {
+          this.focusHour = (this.focusHour - 1 + 24) % 24;
+        }
+        if (this.focusScrubberInput) this.focusScrubberInput.value = this.focusHour.toString();
+        this.updateFocusIndicatorPosition();
+        this.updateFocusReadout();
+        this.updateShareUrl();
+        this.renderOverlapWidget();
+        this.updateRowClockTimes();
+        
+        // Restore animation transition after a short tick
+        setTimeout(() => {
+          if (!this.isDragging && this.focusIndicator) {
+            this.focusIndicator.classList.remove('dragging');
+          }
+        }, 50);
+      }, { passive: false });
+    }
 
     // 8e. Time Format Switcher toggles
     document.getElementById('time-format-12h')?.addEventListener('click', () => this.setTimeFormat(false));
     document.getElementById('time-format-24h')?.addEventListener('click', () => this.setTimeFormat(true));
 
     // 8f. Custom Duration Slider input listener
-    this.durationSliderInput.addEventListener('input', () => {
-      this.setDuration(parseInt(this.durationSliderInput.value));
-    });
+    if (this.durationSliderInput) {
+      this.durationSliderInput.addEventListener('input', () => {
+        this.setDuration(parseInt(this.durationSliderInput.value));
+      });
+    }
 
     // 8h. Custom Duration Manual Input listener
-    this.durationSliderValue.addEventListener('input', () => {
-      const parsed = parseDurationInput(this.durationSliderValue.value);
-      if (parsed !== null && parsed >= 15 && parsed <= 720) {
-        this.meetingDurationMinutes = parsed;
-        this.durationSliderInput.value = parsed.toString();
-        this.updateDurationButtonsUI();
-        this.render();
-      }
-    });
+    if (this.durationSliderValue) {
+      this.durationSliderValue.addEventListener('input', () => {
+        const parsed = parseDurationInput(this.durationSliderValue.value);
+        if (parsed !== null && parsed >= 15 && parsed <= 720) {
+          this.meetingDurationMinutes = parsed;
+          if (this.durationSliderInput) this.durationSliderInput.value = parsed.toString();
+          this.updateDurationButtonsUI();
+          this.render();
+        }
+      });
 
-    this.durationSliderValue.addEventListener('change', () => {
-      const parsed = parseDurationInput(this.durationSliderValue.value);
-      if (parsed !== null && parsed > 0) {
-        const clamped = Math.max(15, Math.min(720, parsed));
-        this.setDuration(clamped);
-      } else {
-        this.updateDurationSliderUI();
-      }
-    });
+      this.durationSliderValue.addEventListener('change', () => {
+        const parsed = parseDurationInput(this.durationSliderValue.value);
+        if (parsed !== null && parsed > 0) {
+          const clamped = Math.max(15, Math.min(720, parsed));
+          this.setDuration(clamped);
+        } else {
+          this.updateDurationSliderUI();
+        }
+      });
 
-    this.durationSliderValue.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        this.durationSliderValue.blur();
-      }
-    });
+      this.durationSliderValue.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          this.durationSliderValue.blur();
+        }
+      });
+    }
 
     // 8g. Custom hover tooltips
     this.setupTooltipListeners();
 
     // 9. Keyboard Help Trigger
     document.getElementById('trigger-keyboard-help')?.addEventListener('click', () => {
-      this.keyboardHelpModal.classList.remove('hidden');
+      if (this.keyboardHelpModal) this.keyboardHelpModal.classList.remove('hidden');
     });
-    this.keyboardHelpModal.addEventListener('click', (e) => {
-      if (e.target === this.keyboardHelpModal || (e.target as HTMLElement).closest('.close-modal')) {
-        this.keyboardHelpModal.classList.add('hidden');
-      }
-    });
+    if (this.keyboardHelpModal) {
+      this.keyboardHelpModal.addEventListener('click', (e) => {
+        if (e.target === this.keyboardHelpModal || (e.target as HTMLElement).closest('.close-modal')) {
+          this.keyboardHelpModal.classList.add('hidden');
+        }
+      });
+    }
 
     // 10. Global keyboard shortcuts
     window.addEventListener('keydown', (e) => this.handleGlobalKeydowns(e));
@@ -879,9 +901,11 @@ class RealTimeZonesApp {
     // 11. Settings & Reset triggers
     this.settingsMenuButton?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isHidden = this.settingsDropdown.classList.contains('hidden');
-      this.settingsDropdown.classList.toggle('hidden', !isHidden);
-      this.settingsMenuButton.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+      if (this.settingsDropdown) {
+        const isHidden = this.settingsDropdown.classList.contains('hidden');
+        this.settingsDropdown.classList.toggle('hidden', !isHidden);
+        this.settingsMenuButton.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+      }
     });
 
     window.addEventListener('click', () => {
@@ -891,8 +915,8 @@ class RealTimeZonesApp {
 
     this.resetWorkspaceButton?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.settingsDropdown.classList.add('hidden');
-      this.settingsMenuButton.setAttribute('aria-expanded', 'false');
+      if (this.settingsDropdown) this.settingsDropdown.classList.add('hidden');
+      if (this.settingsMenuButton) this.settingsMenuButton.setAttribute('aria-expanded', 'false');
       this.openResetModal();
     });
 
@@ -939,8 +963,8 @@ class RealTimeZonesApp {
 
     // 13. Update positions on window resize
     window.addEventListener('resize', () => {
-      this.updateFocusIndicatorPosition();
-      this.updateCurrentTimeIndicator();
+      if (this.focusIndicator) this.updateFocusIndicatorPosition();
+      if (this.currentTimeLine) this.updateCurrentTimeIndicator();
     });
   }
 
@@ -1014,6 +1038,7 @@ class RealTimeZonesApp {
   }
 
   private handleGlobalKeydowns(e: KeyboardEvent) {
+    if (!this.searchModal || !this.keyboardHelpModal) return;
     const isSearchOpen = !this.searchModal.classList.contains('hidden');
     const isKeyHelpOpen = !this.keyboardHelpModal.classList.contains('hidden');
 
@@ -1730,6 +1755,7 @@ class RealTimeZonesApp {
   // Render everything
   public render() {
     this.saveStateDebounced();
+    if (!this.selectedDateLabel) return;
 
     // 1. Render Date UI labels
     const showShortWeekday = window.innerWidth < 640;
@@ -1974,6 +2000,7 @@ class RealTimeZonesApp {
 
   // Tooltip event handlers
   private setupTooltipListeners() {
+    if (!this.timelineRowsContainer) return;
     this.timelineRowsContainer.addEventListener('mouseover', (e) => {
       const target = e.target as HTMLElement;
       
