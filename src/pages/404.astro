@@ -1,0 +1,137 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const pageTitle = "404: Lost in Time | RealTimeZones";
+const pageDescription = "We couldn't find the page you were looking for. Let's get you back to coordinating timezone schedules.";
+const canonicalUrl = "https://realtimezones.com/404";
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col justify-center gap-10 relative select-text">
+      
+      <!-- Atmospheric Mesh Gradient -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none flex items-center justify-center">
+        <div class="w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.07)_0%,rgba(121,40,202,0.05)_35%,rgba(255,0,128,0.03)_70%,transparent_100%)] blur-[40px] opacity-70"></div>
+      </div>
+
+      <!-- Vercel-style Large Card container -->
+      <div class="border border-zinc-200 dark:border-zinc-800 p-8 md:p-12 rounded-xl bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md shadow-xl dark:shadow-none flex flex-col items-center text-center">
+        
+        <!-- Monospace eyebrow -->
+        <span class="font-mono text-[10px] text-[#888888] uppercase tracking-widest block mb-4">Error 404</span>
+        
+        <!-- Big title sentence-cased period-terminated -->
+        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          Lost in Time.
+        </h1>
+        
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-4 max-w-md mx-auto leading-relaxed">
+          We couldn't find the page you were looking for. Perhaps it slipped into another timezone or was unscheduled.
+        </p>
+
+        <!-- minimalist clock illustration with CSS animations -->
+        <div class="flex justify-center my-10 select-none">
+          <div class="relative w-28 h-28 flex items-center justify-center">
+            <!-- Ambient light -->
+            <div class="absolute inset-0 bg-[radial-gradient(circle,rgba(80,227,194,0.15)_0%,transparent_70%)] rounded-full blur-xs"></div>
+            
+            <!-- Clock shape -->
+            <svg class="w-24 h-24 text-zinc-300 dark:text-zinc-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="3 3" class="text-zinc-400 dark:text-zinc-700 origin-center animate-[spin_90s_linear_infinite]" />
+              <!-- Minute/hour hands -->
+              <line x1="12" y1="12" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" class="origin-[12px_12px] animate-[spin_12s_linear_infinite] text-zinc-400 dark:text-zinc-550" />
+              <line x1="12" y1="12" x2="15.5" y2="10.5" stroke="currentColor" stroke-width="2" class="origin-[12px_12px] animate-[spin_84s_linear_infinite] text-zinc-800 dark:text-zinc-200" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" class="text-zinc-900 dark:text-zinc-100" />
+            </svg>
+            
+            <!-- Floating labels -->
+            <span class="absolute -top-2 font-mono text-[9px] text-[#888888] bg-zinc-50/90 dark:bg-zinc-900/90 px-1.5 py-0.5 border border-zinc-200/50 dark:border-zinc-800 rounded">UTC</span>
+            <span class="absolute -bottom-2 font-mono text-[9px] text-[#888888] bg-zinc-50/90 dark:bg-zinc-900/90 px-1.5 py-0.5 border border-zinc-200/50 dark:border-zinc-800 rounded">EST</span>
+            <span class="absolute -left-4 font-mono text-[9px] text-[#888888] bg-zinc-50/90 dark:bg-zinc-900/90 px-1.5 py-0.5 border border-zinc-200/50 dark:border-zinc-800 rounded">PST</span>
+            <span class="absolute -right-4 font-mono text-[9px] text-[#888888] bg-zinc-50/90 dark:bg-zinc-900/90 px-1.5 py-0.5 border border-zinc-200/50 dark:border-zinc-800 rounded">IST</span>
+          </div>
+        </div>
+
+        <!-- Call-to-actions -->
+        <div class="flex flex-col sm:flex-row gap-3 w-full justify-center">
+          <a 
+            href="/" 
+            class="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 text-zinc-50 font-medium rounded-full text-sm shadow-xs transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Return Home
+          </a>
+          
+          <button 
+            type="button" 
+            class="trigger-add-city px-6 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium rounded-full text-sm shadow-2xs transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 dark:text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Search Cities
+            <span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200/50 dark:border-zinc-800 shadow-2xs">⌘K</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Quick board links -->
+      <section class="flex flex-col items-center gap-3">
+        <span class="font-mono text-[10px] text-[#888888] uppercase tracking-wider">Try popular timezone boards</span>
+        <div class="flex flex-wrap gap-2 justify-center max-w-md">
+          <a href="/convert/est-to-ist" class="px-3 py-1.5 text-xs font-mono bg-zinc-100/60 dark:bg-zinc-900/60 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/60 rounded-lg transition-colors">
+            EST to IST
+          </a>
+          <a href="/convert/pst-to-ist" class="px-3 py-1.5 text-xs font-mono bg-zinc-100/60 dark:bg-zinc-900/60 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/60 rounded-lg transition-colors">
+            PST to IST
+          </a>
+          <a href="/convert/gmt-to-est" class="px-3 py-1.5 text-xs font-mono bg-zinc-100/60 dark:bg-zinc-900/60 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/60 rounded-lg transition-colors">
+            GMT to EST
+          </a>
+          <a href="/convert/london-to-new-york" class="px-3 py-1.5 text-xs font-mono bg-zinc-100/60 dark:bg-zinc-900/60 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200/40 dark:border-zinc-800/60 rounded-lg transition-colors">
+            London to NY
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
+          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">About</a>
+          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+</Layout>
+
+<!-- Load Client Orchestrator Scripts Bundle for static pages -->
+<script src="../scripts/static-pages.ts"></script>

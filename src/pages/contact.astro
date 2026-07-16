@@ -144,12 +144,10 @@ const canonicalUrl = "https://realtimezones.com/contact";
   <KeyboardHelp />
 </Layout>
 
-<script>
-  // Quick footer helper trigger bindings
-  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
-    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
-  });
+<!-- Load Client Orchestrator Scripts Bundle for static pages -->
+<script src="../scripts/static-pages.ts"></script>
 
+<script>
   // Client-side Contact Form handling
   const contactForm = document.getElementById('contact-form') as HTMLFormElement | null;
   const successBanner = document.getElementById('success-banner') as HTMLDivElement | null;

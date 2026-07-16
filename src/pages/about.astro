@@ -117,9 +117,5 @@ const canonicalUrl = "https://realtimezones.com/about";
   <KeyboardHelp />
 </Layout>
 
-<script>
-  // Quick footer helper trigger bindings
-  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
-    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
-  });
-</script>
+<!-- Load Client Orchestrator Scripts Bundle for static pages -->
+<script src="../scripts/static-pages.ts"></script>

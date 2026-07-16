@@ -1,0 +1,129 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const pageTitle = "500: Server Out of Sync | RealTimeZones";
+const pageDescription = "An unexpected server error occurred. Let's reset your workspace or get you back home.";
+const canonicalUrl = "https://realtimezones.com/500";
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col justify-center gap-10 relative select-text">
+      
+      <!-- Atmospheric Mesh Gradient -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none flex items-center justify-center">
+        <div class="w-[500px] h-[500px] rounded-full bg-[radial-gradient(circle,rgba(238,0,0,0.06)_0%,rgba(121,40,202,0.04)_35%,rgba(0,112,243,0.03)_70%,transparent_100%)] blur-[40px] opacity-70"></div>
+      </div>
+
+      <!-- Vercel-style Large Card container -->
+      <div class="border border-zinc-200 dark:border-zinc-800 p-8 md:p-12 rounded-xl bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md shadow-xl dark:shadow-none flex flex-col items-center text-center">
+        
+        <!-- Monospace eyebrow -->
+        <span class="font-mono text-[10px] text-[#888888] uppercase tracking-widest block mb-4">Error 500</span>
+        
+        <!-- Big title sentence-cased period-terminated -->
+        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          Server out of sync.
+        </h1>
+        
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-4 max-w-md mx-auto leading-relaxed">
+          Something went wrong on our end. Your browser's stored configuration might be out of sync or corrupted.
+        </p>
+
+        <!-- minimalistic server warning illustration with CSS animations -->
+        <div class="flex justify-center my-10 select-none">
+          <div class="relative w-28 h-28 flex items-center justify-center">
+            <!-- Ambient light -->
+            <div class="absolute inset-0 bg-[radial-gradient(circle,rgba(238,0,0,0.12)_0%,transparent_70%)] rounded-full blur-xs"></div>
+            
+            <!-- Server shape -->
+            <svg class="w-24 h-24 text-zinc-350 dark:text-zinc-850" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="5" rx="1" class="text-zinc-400 dark:text-zinc-700" />
+              <rect x="2" y="10" width="20" height="5" rx="1" class="text-zinc-500 dark:text-zinc-650 animate-[pulse_2s_infinite]" />
+              <rect x="2" y="17" width="20" height="5" rx="1" class="text-zinc-400 dark:text-zinc-700" />
+              
+              <!-- Status dots -->
+              <circle cx="5" cy="5.5" r="0.75" fill="currentColor" class="text-emerald-500" />
+              <circle cx="5" cy="12.5" r="0.75" fill="currentColor" class="text-red-500 animate-[pulse_1s_infinite]" />
+              <circle cx="5" cy="19.5" r="0.75" fill="currentColor" class="text-emerald-500" />
+              
+              <!-- Warning symbol overlay -->
+              <path d="M12 9v4M12 16h.01" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" class="text-red-500 dark:text-red-500" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Call-to-actions -->
+        <div class="flex flex-col sm:flex-row gap-3 w-full justify-center">
+          <a 
+            href="/" 
+            class="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 text-zinc-50 font-medium rounded-full text-sm shadow-xs transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Return Home
+          </a>
+          
+          <button 
+            type="button" 
+            id="reset-workspace-btn-direct" 
+            class="px-6 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-red-650 dark:text-red-400 hover:text-red-750 dark:hover:text-red-300 font-medium rounded-full text-sm shadow-2xs transition-colors duration-150 cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+            </svg>
+            Reset Workspace
+          </button>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
+          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">About</a>
+          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+</Layout>
+
+<!-- Load Client Orchestrator Scripts Bundle for static pages -->
+<script src="../scripts/static-pages.ts"></script>
+
+<!-- Foo-proof direct reset handler -->
+<script>
+  document.getElementById('reset-workspace-btn-direct')?.addEventListener('click', () => {
+    const confirmReset = confirm("Reset workspace? All added cities, settings, and favorites will be permanently cleared.");
+    if (confirmReset) {
+      localStorage.clear();
+      window.location.href = '/';
+    }
+  });
+</script>
