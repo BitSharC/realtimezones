@@ -1,0 +1,125 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const pageTitle = "About RealTimeZones | Elegant Timezone Converter & Planner";
+const pageDescription = "Learn about RealTimeZones—a minimalist, local-first interactive timezone converter and meeting planner built for remote teams, freelancers, and global nomads.";
+const canonicalUrl = "https://realtimezones.com/about";
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col gap-10 relative select-text">
+      
+      <!-- Atmospheric Mesh Gradient -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute top-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)]"></div>
+      </div>
+
+      <!-- Section Header -->
+      <section class="flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+        <span class="font-mono text-xs text-[#888888] uppercase tracking-widest">Platform Vision</span>
+        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          About RealTimeZones.
+        </h1>
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-2 font-sans leading-relaxed">
+          The fastest, most elegant timezone coordinator for remote teams, freelancers, and digital nomads.
+        </p>
+      </section>
+
+      <!-- Content Sections -->
+      <section class="flex flex-col gap-8 text-zinc-600 dark:text-zinc-400 font-sans text-sm md:text-base leading-relaxed">
+        
+        <div class="flex flex-col gap-3">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">The Timezone Problem.</h2>
+          <p>
+            Distributed teams make the world smaller, but scheduling makes the day longer. Traditional timezone calculators rely on static lists, confusing dropdowns, and slow server requests. They require you to manually calculate hours in your head, leading to scheduling mistakes, missed calls, and disrupted sleep schedules.
+          </p>
+          <p>
+            <strong>RealTimeZones</strong> was created to change that. We believe coordinating across borders should be a visual, fluid experience. 
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-4 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">Designed for Modern Teams.</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+            <div class="border border-zinc-200 dark:border-zinc-800 p-5 rounded-xl bg-white/40 dark:bg-zinc-900/30 backdrop-blur-xs">
+              <h3 class="font-semibold text-zinc-900 dark:text-zinc-50 text-sm md:text-base mb-1">Visual Scrubber Engine</h3>
+              <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+                Drag a single timeline slider to instantly synchronize hours across all added cities. Spot overlaps in seconds.
+              </p>
+            </div>
+            
+            <div class="border border-zinc-200 dark:border-zinc-800 p-5 rounded-xl bg-white/40 dark:bg-zinc-900/30 backdrop-blur-xs">
+              <h3 class="font-semibold text-zinc-900 dark:text-zinc-50 text-sm md:text-base mb-1">Local-First & Offline-Capable</h3>
+              <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+                All calculations are executed directly in your browser. No data is stored or processed on external servers.
+              </p>
+            </div>
+            
+            <div class="border border-zinc-200 dark:border-zinc-800 p-5 rounded-xl bg-white/40 dark:bg-zinc-900/30 backdrop-blur-xs">
+              <h3 class="font-semibold text-zinc-900 dark:text-zinc-50 text-sm md:text-base mb-1">Adaptive Working Hours</h3>
+              <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+                Our color-coded indicator blocks mark sleeping, working (8 AM - 6 PM), and transition hours to respect team boundaries.
+              </p>
+            </div>
+            
+            <div class="border border-zinc-200 dark:border-zinc-800 p-5 rounded-xl bg-white/40 dark:bg-zinc-900/30 backdrop-blur-xs">
+              <h3 class="font-semibold text-zinc-900 dark:text-zinc-50 text-sm md:text-base mb-1">Instant Calendar Export</h3>
+              <p class="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+                Once you locate the ideal overlap slot, export details directly to Google, Outlook, Apple Calendar, or download an ICS file.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">Our Philosophy.</h2>
+          <p>
+            We optimize for density, speed, and privacy. The interface uses a stark, canvas-like aesthetic so your data stands out. Keyboard shortcuts (<kbd class="px-1 py-0.5 rounded text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-2xs">⌘K</kbd> to search, <kbd class="px-1 py-0.5 rounded text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-2xs">?</kbd> for help) ensure you can manage your work without leaving the keyboard.
+          </p>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
+          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors text-zinc-950 dark:text-zinc-50 font-semibold">About</a>
+          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+</Layout>
+
+<script>
+  // Quick footer helper trigger bindings
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>

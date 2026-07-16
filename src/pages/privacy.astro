@@ -1,0 +1,121 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const pageTitle = "Privacy Policy | RealTimeZones";
+const pageDescription = "Privacy Policy for RealTimeZones. Learn why our local-first tool ensures 100% of your timezone queries and configuration stay on your own device.";
+const canonicalUrl = "https://realtimezones.com/privacy";
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col gap-10 relative select-text">
+      
+      <!-- Atmospheric Mesh Gradient -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute top-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)]"></div>
+      </div>
+
+      <!-- Section Header -->
+      <section class="flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+        <span class="font-mono text-xs text-[#888888] uppercase tracking-widest">Legal & Security</span>
+        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          Privacy Policy.
+        </h1>
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-2 font-sans leading-relaxed">
+          Effective date: July 16, 2026. We prioritize local execution so your data remains strictly yours.
+        </p>
+      </section>
+
+      <!-- Privacy Policy Content -->
+      <section class="flex flex-col gap-8 text-zinc-600 dark:text-zinc-400 font-sans text-sm md:text-base leading-relaxed">
+        
+        <div class="flex flex-col gap-3">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">1. Local-First Processing.</h2>
+          <p>
+            RealTimeZones is built as a <strong>local-first</strong>, static web application. Unlike traditional scheduling software, all time zone offsets, city selections, timeline scrubbing events, and calendar export links are calculated and rendered entirely on your local device. 
+          </p>
+          <p>
+            We do not run search indexes or coordinate queries on remote database servers. Your searches are processed client-side against an optimized static city dictionary.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">2. Local Storage Usage.</h2>
+          <p>
+            We utilize browser-based storage technologies (such as the standard <code>localStorage</code> API) to cache:
+          </p>
+          <ul class="list-disc pl-5 flex flex-col gap-1.5 mt-1 text-sm">
+            <li>Your active list of selected cities.</li>
+            <li>Your preferred time format (12h vs 24h).</li>
+            <li>Your active theme preference (System, Light, or Dark mode).</li>
+            <li>Your timeline scrubbing state.</li>
+          </ul>
+          <p class="mt-2">
+            This data is stored purely within your local web browser. You can clear this data at any time by wiping your browser history/cache or by clicking the <strong>Reset Workspace</strong> button located within the navigation settings dropdown.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">3. No Tracking & Cookies.</h2>
+          <p>
+            We prioritize local-first data integrity. We do not use invasive third-party behavioral analytics tracking pixels, and we never sell, distribute, or monetize your team's configuration details to third-party data brokers.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">4. External Contact Forms.</h2>
+          <p>
+            If you submit a query via our <a href="/contact" class="text-zinc-900 dark:text-zinc-50 underline font-medium">Contact Form</a>, we only utilize your email address and message details to address your specific support request or feedback. We do not sell or add your email address to automated marketing lists.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">5. Contact Information.</h2>
+          <p>
+            For any queries or concerns regarding this policy, please reach out via our contact page.
+          </p>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
+          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">About</a>
+          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors text-zinc-950 dark:text-zinc-50 font-semibold">Privacy</a>
+          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+</Layout>
+
+<script>
+  // Quick footer helper trigger bindings
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>

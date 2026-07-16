@@ -223,8 +223,13 @@ const canonicalUrl = `https://realtimezones.com/timezone/${citySlug}`;
     <!-- Footer Area -->
     <footer class="border-t border-[#262626] py-6 bg-[#050505] transition-colors duration-150">
       <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-500 font-mono select-none uppercase tracking-wider">
-        <div>
-          RealTimeZones • Clean & Fast Time Sync
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-800">|</span>
+          <a href="/about" class="hover:text-white transition-colors">About</a>
+          <a href="/contact" class="hover:text-white transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-white transition-colors">Terms</a>
         </div>
         <div class="flex items-center gap-4">
           <button type="button" class="trigger-add-city hover:text-white transition-colors cursor-pointer">⌘K Search</button>

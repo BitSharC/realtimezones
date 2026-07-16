@@ -1971,7 +1971,7 @@ class RealTimeZonesApp {
       }
 
       const hourBlock = document.createElement('div');
-      hourBlock.className = `hour-block w-12 h-16 flex flex-col justify-center items-center font-mono border-r border-b border-zinc-200/50 dark:border-zinc-800/30 text-xs shrink-0 cursor-ew-resize transition-all ${categoryClass}`;
+      hourBlock.className = `hour-block w-12 h-16 flex flex-col items-center justify-center font-mono border-r border-b border-zinc-200/50 dark:border-zinc-800/30 text-xs shrink-0 cursor-ew-resize transition-all ${categoryClass}`;
       hourBlock.setAttribute('data-hour-idx', h.toString());
       hourBlock.setAttribute('data-city-name', city.name);
       hourBlock.setAttribute('data-local-time', dataLocalTime);
@@ -1982,12 +1982,12 @@ class RealTimeZonesApp {
       if (this.is24HourFormat) {
         hourBlock.innerHTML = `
           <span class="font-bold">${formattedLocalHour}</span>
-          <span class="text-[9px] scale-90 opacity-60 mt-0.5">:00</span>
+          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">:00</span>
         `;
       } else {
         hourBlock.innerHTML = `
           <span class="font-bold">${formattedLocalHour}</span>
-          <span class="text-[9px] scale-90 opacity-60 mt-0.5">${ampm}</span>
+          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">${ampm}</span>
         `;
       }
 

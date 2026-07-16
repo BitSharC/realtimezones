@@ -1,0 +1,116 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import CitySearch from '../components/CitySearch.astro';
+import KeyboardHelp from '../components/KeyboardHelp.astro';
+
+const pageTitle = "Terms & Conditions | RealTimeZones";
+const pageDescription = "Terms and Conditions for using RealTimeZones. Understand the terms of service, disclaimer of schedule accuracy, and acceptable use policy.";
+const canonicalUrl = "https://realtimezones.com/terms";
+---
+
+<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
+  <div class="flex flex-col min-h-screen">
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col gap-10 relative select-text">
+      
+      <!-- Atmospheric Mesh Gradient -->
+      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute top-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)]"></div>
+      </div>
+
+      <!-- Section Header -->
+      <section class="flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+        <span class="font-mono text-xs text-[#888888] uppercase tracking-widest">User Agreement</span>
+        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+          Terms & Conditions.
+        </h1>
+        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-2 font-sans leading-relaxed">
+          Effective date: July 16, 2026. Please read these terms carefully before using our scheduler.
+        </p>
+      </section>
+
+      <!-- Terms Content -->
+      <section class="flex flex-col gap-8 text-zinc-600 dark:text-zinc-400 font-sans text-sm md:text-base leading-relaxed">
+        
+        <div class="flex flex-col gap-3">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">1. Acceptance of Terms.</h2>
+          <p>
+            By accessing or using the RealTimeZones application, you agree to comply with and be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the tool.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">2. Scope of Service & Usage License.</h2>
+          <p>
+            RealTimeZones provides a timezone visualizer and meeting slot exporter free of charge. You are granted a limited, personal, non-exclusive, non-transferable license to utilize the application for private or commercial scheduling calculations.
+          </p>
+          <p>
+            You agree not to attempt to reverse engineer, disrupt, or execute automated scraping scripts against the application client bundle.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">3. Disclaimer of Accuracy.</h2>
+          <p>
+            Time zones, local offset rules, and Daylight Saving Time (DST) definitions represent complex and evolving political decisions. While we make every effort to leverage high-precision local database rules, 
+            <strong>RealTimeZones is provided "as is" and "as available".</strong>
+          </p>
+          <p>
+            We do not warrant that all timezone calculations, offsets, or daylight saving rules are 100% accurate or up-to-date at the time of your scheduling. Users are strongly encouraged to verify important meeting times against standard calendar invitations prior to finalizing commitments.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">4. Limitation of Liability.</h2>
+          <p>
+            In no event shall RealTimeZones or its developers be liable for any direct, indirect, incidental, or consequential damages (including, but not limited to, loss of profits, missed opportunities, or business interruption) arising from errors or inaccuracies in scheduling or timezone calculations.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+          <h2 class="text-lg md:text-xl font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">5. Modifications to the Service.</h2>
+          <p>
+            We reserve the right to modify, suspend, or discontinue the application (or any part thereof) at any time without notice. We also reserve the right to revise these terms by posting updates directly to this page.
+          </p>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
+      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span>RealTimeZones • Clean & Fast Time Sync</span>
+          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
+          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">About</a>
+          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Contact</a>
+          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors text-zinc-950 dark:text-zinc-50 font-semibold">Terms</a>
+        </div>
+        <div class="flex items-center gap-4">
+          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
+          <span>•</span>
+          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+</Layout>
+
+<script>
+  // Quick footer helper trigger bindings
+  document.getElementById('trigger-keyboard-help-footer')?.addEventListener('click', () => {
+    document.getElementById('keyboard-help-modal')?.classList.remove('hidden');
+  });
+</script>
