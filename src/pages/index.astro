@@ -15,7 +15,10 @@ const capitalizeCity = (slug: string) => {
 };
 ---
 
-<Layout>
+<Layout 
+  title="RealTimeZones — The Fastest Interactive Meeting Planner & Timezone Converter"
+  description="Coordinate meetings across global teams instantly. A minimalist, local-first interactive grid slider to calculate timezone differences without the friction."
+>
   <!-- Global App Container -->
   <div class="flex flex-col min-h-screen">
     
@@ -285,6 +288,93 @@ const capitalizeCity = (slug: string) => {
       </section>
 
     </main>
+
+    <!-- SEO Optimization Section -->
+    <section class="border-t border-[#262626] bg-[#0a0a0a] text-zinc-400 py-16 px-6 md:px-8 select-text">
+      <div class="max-w-[1400px] mx-auto">
+        <!-- Section Header -->
+        <div class="mb-12 max-w-3xl">
+          <h3 class="text-2xl md:text-3xl font-semibold tracking-tight text-white leading-tight">
+            Real Time Zones. The ultimate global meeting planner.
+          </h3>
+          <p class="text-sm text-zinc-400 mt-3 leading-relaxed font-sans">
+            Coordinate operations across international boundaries without timezone lookup friction. Explore our localized converter engine, built for remote-first teams and distributed agencies.
+          </p>
+        </div>
+
+        <!-- 3-Column Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          <!-- Column 1 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              How It Works: Scrubber Engine
+            </h4>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              To coordinate meetings across global teams without timezone friction, our interactive Timezone Converter and Meeting Planner utilizes a high-precision local-first slider engine. When you slide the visual hours scrubber, it dynamically projects matching local times across every configured city card in your active list. This is not a static grid; it is a live matrix that translates complex UTC offsets into simple, color-coded working hour windows.
+            </p>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              By visualizing hours as blocks—green for working times (8:00 AM to 6:00 PM), amber for border zones, and red for sleeping hours—you can instantly locate overlapping times. Whether aligning a world clock meeting planner for a team spread across San Francisco, London, and Tokyo, or scheduling a one-off world meeting planner session using our custom meeting planner time zone options, our tool removes the guesswork. Drag the scrubber, check the overlap indicator, select a duration, and copy the unified invite link.
+            </p>
+          </div>
+
+          <!-- Column 2 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              Why Teams Need Real-Time Sync
+            </h4>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              Traditional static timezone lists and table grids fail because they lack instant interactivity. Distributed organizations run on dynamic schedules, where time is fluid. Managing a team distributed across diverse regions requires an international meeting planner that adapts to daylight savings, customized shift patterns, and custom durations. A simple calendar invite doesn't solve the cognitive load of calculating timezone gaps.
+            </p>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              If you need to schedule a review using an ist to pst conversion, pst to ist conversion, or est to ist conversion, doing math on the fly is prone to errors. Our dynamic timezone converter calculator does the heavy lifting, providing an active visual matrix instead of static listings. By calculating overlap zones automatically, you minimize midnight wakeups and prevent scheduling meetings during team sleep cycles. For companies executing gmt to est conversion workflows daily, this layout turns a multi-step calendar chore into a single-second drag-and-drop sync.
+            </p>
+          </div>
+
+          <!-- Column 3 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              Frequently Asked Questions
+            </h4>
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  How do I accurately calculate the time gap between EST and IST?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  To execute an est to ist conversion accurately, slide the scrubber to your desired Eastern Standard Time (EST) and watch the Indian Standard Time (IST) card dynamically update. Alternatively, use our custom city conversion pages to inspect specific hourly differences.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  What is the easiest way to plan a meeting across three timezones?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Use our global meeting planner timeline grid. Add all three target cities using the time zone meeting planner search bar (<kbd class="px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">⌘K</kbd>). Then, slide the timeline scrubber until the highlighted column aligns with green working blocks for all three locations.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  Does the timezone converter calculator account for daylight savings?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Yes. Our database computes active local rules automatically. Whether you are analyzing a pacific time zone converter slot, looking up london time now, seoul time now, new-york time now, dubai time now, or tokyo time now, the engine factors in the exact current date rules in real time.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  How do I share meeting times with international clients?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Once you identify the sweet spot using our time and date meeting planner tool, choose a meeting duration and click "Export Meeting Slot" to generate invite templates instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
 
     <!-- Footer Area -->
     <footer class="border-t border-[#262626] bg-[#000000] text-sm text-[#888888] pt-12 pb-8 px-6 mt-auto">
