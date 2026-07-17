@@ -574,7 +574,7 @@ const capitalizeCity = (slug: string) => {
 
     <!-- Footer Area -->
     <footer class="border-t border-[#262626] bg-[#000000] text-sm text-[#888888] pt-12 pb-8 px-6 mt-auto">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-8 max-w-6xl mx-auto">
         <!-- Column 1: Popular Conversions -->
         <div class="flex flex-col gap-4">
           <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Popular Conversions</h3>
@@ -636,18 +636,34 @@ const capitalizeCity = (slug: string) => {
           </div>
         </div>
 
-        <!-- Column 4: Branding & Meta -->
-        <div class="col-span-2 md:col-span-1 flex flex-col gap-3">
-          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">RealTimeZones</h3>
-          <div class="text-[#888888] text-xs font-mono">© 2026 RealTimeZones</div>
-          <p class="text-xs text-[#444444] font-sans leading-relaxed">
-            Blazing fast global coordination built on local-first privacy.
-          </p>
+        <!-- Column 4: Shortcuts -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Shortcuts</h3>
+          <div class="flex flex-col gap-2.5">
+            <button 
+              type="button" 
+              class="trigger-add-city hover:text-[#ffffff] transition-colors duration-200 cursor-pointer text-left text-xs font-mono text-[#888888] w-fit"
+            >
+              Search (⌘K)
+            </button>
+            <button 
+              type="button" 
+              id="trigger-keyboard-help-footer" 
+              class="hover:text-[#ffffff] transition-colors duration-200 cursor-pointer text-left text-xs font-mono text-[#888888] w-fit"
+            >
+              Shortcuts
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 5: Developer -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Developer</h3>
           <div class="text-xs font-mono text-[#888888]">
             <p>Built with ❤️ by <span class="text-[#ffffff]">BitSharc</span></p>
             <div class="mt-2">
               <span class="text-[#666666]">More tools:</span>
-              <ul class="mt-1 space-y-1">
+              <ul class="mt-1">
                 <li>
                   <a href="https://courierprice.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#ffffff] transition-colors duration-200">
                     ↳ CourierPrice
@@ -656,22 +672,14 @@ const capitalizeCity = (slug: string) => {
               </ul>
             </div>
           </div>
-          <div class="flex items-center gap-3 mt-4 text-xs font-mono">
-            <button 
-              type="button" 
-              class="trigger-add-city hover:text-[#ffffff] transition-colors duration-200 cursor-pointer"
-            >
-              Search (⌘K)
-            </button>
-            <span class="text-[#444444]">•</span>
-            <button 
-              type="button" 
-              id="trigger-keyboard-help-footer" 
-              class="hover:text-[#ffffff] transition-colors duration-200 cursor-pointer"
-            >
-              Shortcuts
-            </button>
-          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Full-Width Row -->
+      <div class="max-w-6xl mx-auto border-t border-[#222222] mt-8 pt-6">
+        <div class="flex flex-col md:flex-row justify-between text-xs text-[#666666] gap-4">
+          <span>© 2026 realtimezones.com. All rights reserved.</span>
+          <span>Blazing fast global coordination built on local-first privacy.</span>
         </div>
       </div>
     </footer>
