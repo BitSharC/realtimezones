@@ -117,17 +117,31 @@ const canonicalUrl = "https://realtimezones.com/404";
           <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
           <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
         </div>
-        <div class="text-xs font-mono text-zinc-500 dark:text-[#888888] normal-case tracking-normal select-text text-center sm:text-left">
-          <p>Built with ❤️ by <span class="text-zinc-900 dark:text-[#ffffff]">BitSharc</span></p>
-          <div class="mt-1">
+        <div class="text-xs font-mono text-zinc-500 dark:text-[#888888] normal-case tracking-normal select-text text-center sm:text-left flex flex-col gap-4">
+          <p class="whitespace-nowrap">Built with ❤️ by <span class="text-zinc-900 dark:text-[#ffffff]">BitSharc</span></p>
+          <!-- Mobile-only Sponsor Section -->
+          <div class="flex flex-col items-center sm:items-start gap-1 sm:hidden">
+            <p class="text-xs font-sans text-zinc-650 dark:text-zinc-400">Found this tool helpful?</p>
+            <a 
+              href="https://ko-fi.com/bitsharc" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:text-[#888888] dark:hover:text-[#ffffff] bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 px-2.5 py-1 rounded-md transition-all duration-200 w-fit"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+              Sponsor
+            </a>
+          </div>
+          <div class="flex flex-col items-center sm:items-start gap-1">
             <span class="text-zinc-400 dark:text-[#666666]">More tools:</span>
-            <ul class="mt-1 space-y-1">
-              <li>
-                <a href="https://courierprice.com" target="_blank" rel="noopener noreferrer" class="text-zinc-600 dark:text-[#888888] hover:text-zinc-900 dark:hover:text-[#ffffff] transition-colors duration-200">
-                  ↳ CourierPrice
-                </a>
-              </li>
-            </ul>
+            <a 
+              href="https://courierprice.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:text-[#888888] dark:hover:text-[#ffffff] transition-colors duration-200"
+            >
+              ↳ CourierPrice
+            </a>
           </div>
         </div>
         <div class="flex items-center gap-4">

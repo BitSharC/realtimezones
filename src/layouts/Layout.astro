@@ -14,7 +14,7 @@ const {
 } = Astro.props;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" class="overflow-x-hidden max-w-full w-full">
   <head>
     <!-- Google tag (gtag.js) -->
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-815BVENSYJ"></script>
@@ -93,7 +93,7 @@ const {
       })();
     </script>
   </head>
-  <body class="bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 min-h-screen selection:bg-zinc-900 selection:text-zinc-50 dark:selection:bg-zinc-100 dark:selection:text-zinc-900 transition-colors duration-150 antialiased overflow-x-hidden">
+  <body class="bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 min-h-screen selection:bg-zinc-900 selection:text-zinc-50 dark:selection:bg-zinc-100 dark:selection:text-zinc-900 transition-colors duration-150 antialiased overflow-x-hidden max-w-full w-full">
     <slot />
   </body>
 </html>
