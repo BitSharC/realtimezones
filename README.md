@@ -1,6 +1,10 @@
 <div align="center">
 
-# 🌍 RealTimeZones
+<a href="https://realtimezones.com">
+  <img src="assets/icon.png" alt="RealTimeZones Logo" width="100">
+</a>
+
+# RealTimeZones
 
 ### Plan meetings across time zones without the mental math.
 
