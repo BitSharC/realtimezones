@@ -13,12 +13,24 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# environment variables
+# environment variables & secrets
 .env
-.env.production
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
 
-# macOS-specific files
-.DS_Store
-
-# jetbrains setting folder
+# cloudflare wrangler & ide
+.wrangler/
+.vscode/
 .idea/
+.kilo/
+.kilocode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# tauri build output
+src-tauri/target/
