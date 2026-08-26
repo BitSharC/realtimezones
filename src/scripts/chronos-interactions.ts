@@ -147,6 +147,87 @@ export const POPULAR_AVAILABLE_CITIES: CityTime[] = [
   { id: 'kgl', name: 'Kigali', country: 'Rwanda', flag: '🇷🇼', timezone: 'Africa/Kigali', offsetHours: 1, badge: '+1h', statusLabel: 'CAT, GMT+2' },
 ];
 
+export function getTzOffsetMinutes(timeZone: string, date: Date = new Date()): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const getVal = (type: string) => parseInt(parts.find((p) => p.type === type)?.value || '0', 10);
+
+    const year = getVal('year');
+    const month = getVal('month') - 1;
+    const day = getVal('day');
+    let hour = getVal('hour');
+    if (hour === 24) hour = 0;
+    const minute = getVal('minute');
+    const second = getVal('second');
+
+    const tzDateAsUtc = Date.UTC(year, month, day, hour, minute, second);
+    const realUtc = date.getTime() - date.getMilliseconds();
+    return Math.round((tzDateAsUtc - realUtc) / 60000);
+  } catch (_) {
+    return 0;
+  }
+}
+
+export function getBaseCity(ws?: Workspace): CityTime {
+  const activeWs = ws || getActiveWorkspace();
+  if (activeWs && activeWs.cities && activeWs.cities.length > 0) {
+    const found = activeWs.cities.find((c) => c.isBase);
+    if (found) return found;
+    return activeWs.cities[0];
+  }
+  return detectUserLocalCity();
+}
+
+export function getCityRelativeOffsetHours(city: CityTime, baseCity?: CityTime): number {
+  const base = baseCity || getBaseCity();
+  if (!city.timezone || !base.timezone || city.id === base.id || city.timezone === base.timezone) {
+    return 0;
+  }
+  const cityMin = getTzOffsetMinutes(city.timezone);
+  const baseMin = getTzOffsetMinutes(base.timezone);
+  return (cityMin - baseMin) / 60;
+}
+
+export function formatOffsetBadge(offsetHours: number, isBase: boolean = false): string {
+  if (isBase || Math.abs(offsetHours) < 0.01) return 'Base';
+  const sign = offsetHours > 0 ? '+' : '-';
+  const absHours = Math.abs(offsetHours);
+  const h = Math.floor(absHours);
+  const m = Math.round((absHours - h) * 60);
+  if (m === 0) return `${sign}${h}h`;
+  return `${sign}${h}:${m.toString().padStart(2, '0')}h`;
+}
+
+export function getCityStatusLabel(timeZone: string, date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone || 'UTC',
+      timeZoneName: 'short',
+    });
+    const parts = formatter.formatToParts(date);
+    const tzName = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+    const offsetMin = getTzOffsetMinutes(timeZone, date);
+    const sign = offsetMin >= 0 ? '+' : '-';
+    const absMin = Math.abs(offsetMin);
+    const h = Math.floor(absMin / 60);
+    const m = absMin % 60;
+    const gmtStr = m === 0 ? `GMT${sign}${h}` : `GMT${sign}${h}:${m.toString().padStart(2, '0')}`;
+    return tzName ? `${tzName}, ${gmtStr}` : gmtStr;
+  } catch (_) {
+    return 'GMT';
+  }
+}
+
 export function detectUserLocalCity(): CityTime {
   try {
     const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata';
@@ -161,10 +242,16 @@ export function detectUserLocalCity(): CityTime {
         (c) => c.timezone.toLowerCase() === normalizedTz.toLowerCase()
       );
       if (exactMatch) {
-        return { ...exactMatch, offsetHours: 0, badge: 'Base', isBase: true };
+        return {
+          ...exactMatch,
+          offsetHours: 0,
+          badge: 'Base',
+          isBase: true,
+          statusLabel: getCityStatusLabel(exactMatch.timezone),
+        };
       }
 
-      // 3. City name segment from timezone string (e.g. "Asia/Kolkata", "America/New_York", "Europe/Paris")
+      // 3. City name segment from timezone string
       const parts = normalizedTz.split('/');
       const rawCity = parts[parts.length - 1].replace(/_/g, ' ');
 
@@ -174,7 +261,13 @@ export function detectUserLocalCity(): CityTime {
           c.name.toLowerCase().includes(rawCity.toLowerCase())
       );
       if (fuzzyMatch) {
-        return { ...fuzzyMatch, offsetHours: 0, badge: 'Base', isBase: true };
+        return {
+          ...fuzzyMatch,
+          offsetHours: 0,
+          badge: 'Base',
+          isBase: true,
+          statusLabel: getCityStatusLabel(fuzzyMatch.timezone),
+        };
       }
 
       // 4. Country Flag heuristic
@@ -195,14 +288,14 @@ export function detectUserLocalCity(): CityTime {
         timezone: userTz,
         offsetHours: 0,
         badge: 'Base',
-        statusLabel: 'Home Base',
+        statusLabel: getCityStatusLabel(userTz),
         isBase: true,
       };
     }
   } catch (_) {}
 
   // Safe fallback default (Mumbai)
-  return { id: 'bom', name: 'Mumbai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 0, badge: 'Base', statusLabel: 'IST', isBase: true };
+  return { id: 'bom', name: 'Mumbai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 0, badge: 'Base', statusLabel: 'IST, GMT+5:30', isBase: true };
 }
 
 let WORKSPACES: Workspace[] = [
@@ -210,7 +303,7 @@ let WORKSPACES: Workspace[] = [
     id: 'ws-main',
     name: 'My Workspace',
     cities: [
-      { id: 'bom', name: 'Mumbai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 0, badge: 'Base', statusLabel: 'IST', isBase: true },
+      { id: 'bom', name: 'Mumbai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 0, badge: 'Base', statusLabel: 'IST, GMT+5:30', isBase: true },
     ],
   },
 ];
@@ -230,9 +323,7 @@ let workEndHour = typeof window !== 'undefined' ? parseInt(localStorage.getItem(
 let scrubStepMinutes = typeof window !== 'undefined' ? parseInt(localStorage.getItem('chronos-scrub-step') || '15', 10) : 15;
 
 export function initChronosDesktop() {
-  // Real-time current live time on launch
   const now = new Date();
-  let focusHour = now.getHours() + now.getMinutes() / 60;
   let is24Hour = true;
   let activeSelectedDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -273,6 +364,20 @@ export function initChronosDesktop() {
       saveWorkspacesToStorage();
     }
   }
+
+  // Determine base city and current live focus hour
+  const baseCity = getBaseCity();
+  const initFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: baseCity.timezone || 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  });
+  const initParts = initFormatter.formatToParts(now);
+  let initH = parseInt(initParts.find((p) => p.type === 'hour')?.value || '0', 10);
+  if (initH === 24) initH = 0;
+  const initM = parseInt(initParts.find((p) => p.type === 'minute')?.value || '0', 10);
+  let focusHour = initH + initM / 60;
 
   // DOM elements
   const scrubberLine = document.getElementById('chronos-focus-line');
@@ -502,6 +607,7 @@ export function initChronosDesktop() {
   // --- Official Website Scoring & Recommendations Algorithm ---
   function calculateBestTimes(): { hour: number; score: number; numWorking: number }[] {
     const ws = getActiveWorkspace();
+    const baseCity = getBaseCity(ws);
     const results: { hour: number; score: number; numWorking: number }[] = [];
     const totalCities = Math.max(1, ws.cities.length);
 
@@ -511,7 +617,8 @@ export function initChronosDesktop() {
       let numSleep = 0;
 
       ws.cities.forEach((c) => {
-        const localHour = (Math.floor(h + c.offsetHours) + 24) % 24;
+        const offset = getCityRelativeOffsetHours(c, baseCity);
+        const localHour = (Math.floor(h + offset) + 24) % 24;
         if (localHour >= workStartHour && localHour < workEndHour) {
           numWorking++;
         } else {
@@ -552,6 +659,7 @@ export function initChronosDesktop() {
   function updateMeetingQuality() {
     const ws = getActiveWorkspace();
     if (ws.cities.length === 0) return;
+    const baseCity = getBaseCity(ws);
 
     let numWorking = 0;
     let numBorder = 0;
@@ -559,8 +667,10 @@ export function initChronosDesktop() {
     const nonWorkingDetails: string[] = [];
 
     ws.cities.forEach((c) => {
-      const localHour = (Math.floor(focusHour + c.offsetHours) + 24) % 24;
-      const formattedLocal = formatTime(localHour, is24Hour);
+      const offset = getCityRelativeOffsetHours(c, baseCity);
+      const localHourFloat = (focusHour + offset + 24) % 24;
+      const localHour = Math.floor(localHourFloat);
+      const formattedLocal = formatTime(localHourFloat, is24Hour);
       const phrase = getContextualTimeOfDay(localHour);
 
       if (localHour >= workStartHour && localHour < workEndHour) {
@@ -666,7 +776,6 @@ export function initChronosDesktop() {
     const endHourFloat = focusHour + selectedMeetingDurationMinutes / 60;
     const endH = formatTime(endHourFloat, is24Hour);
 
-    const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
     const baseName = baseCity?.name || 'Local';
     const baseCode = baseCity?.badge && baseCity.badge !== 'Base' ? baseCity.badge : baseName.slice(0, 3).toUpperCase();
 
@@ -737,14 +846,22 @@ export function initChronosDesktop() {
     if (scrubberLine) scrubberLine.classList.remove('hidden');
     if (scrubberTag) scrubberTag.classList.remove('hidden');
 
+    const baseCity = getBaseCity(ws);
+
     cityRowsContainer.innerHTML = ws.cities
-      .map((city) => {
+      .map((city, cityIndex) => {
+        const isBase = city.isBase || cityIndex === 0;
+        const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
+        const badge = formatOffsetBadge(offset, isBase);
+        const statusLabel = getCityStatusLabel(city.timezone);
+
         let timelineBlocks = '';
         for (let h = 0; h < 24; h++) {
-          const localHour = (Math.floor(h + city.offsetHours) + 24) % 24;
-          const statusClass = getHourStatusClass(localHour);
+          const localHourFloat = (h + offset + 24) % 24;
+          const localHour = Math.floor(localHourFloat);
+          const statusClass = getHourStatusClass(localHourFloat);
           timelineBlocks += `
-            <div class="h-full transition-colors ${statusClass} flex flex-col justify-end p-1 select-none" title="${localHour}:00 ${city.name}">
+            <div class="h-full transition-colors ${statusClass} flex flex-col justify-end p-1 select-none pointer-events-none" title="${localHour}:00 ${city.name}">
               <span class="text-[9px] font-mono text-zinc-600 pointer-events-none select-none">${localHour}</span>
             </div>
           `;
@@ -753,7 +870,7 @@ export function initChronosDesktop() {
         return `
           <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative select-none" id="row-${city.id}" data-city-id="${city.id}">
             <!-- Left City Card with Hover Actions (Draggable Card) -->
-            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" draggable="true" data-city-id="${city.id}">
+            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" data-city-id="${city.id}">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
                   <span class="text-base leading-none shrink-0">${city.flag}</span>
@@ -763,7 +880,7 @@ export function initChronosDesktop() {
                 <!-- Hover Actions: Shift Up, Shift Down, Delete (Revealed on card hover) -->
                 <div class="flex items-center gap-0.5 shrink-0">
                   <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 mr-0.5">
-                    ${city.badge}
+                    ${badge}
                   </span>
                   <button 
                     type="button" 
@@ -803,7 +920,7 @@ export function initChronosDesktop() {
               <!-- Status Dot and Label -->
               <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-mono pointer-events-none">
                 <span id="dot-${city.id}" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
-                <span id="status-${city.id}">--</span>
+                <span id="status-${city.id}">${statusLabel}</span>
               </div>
             </div>
 
@@ -858,49 +975,32 @@ export function initChronosDesktop() {
       btn.addEventListener('pointerdown', (e) => e.stopPropagation());
     });
 
-    // Wire Dual HTML5 + Mouse/Pointer Drag Reordering
+    // Wire Bulletproof Mouse/Pointer Drag Reordering for Windows (WebView2), macOS (WebKit), Linux (WebKitGTK)
     let draggedCityId: string | null = null;
     let isPointerDragging = false;
     let currentDropTargetRow: HTMLElement | null = null;
     const draggableCards = cityRowsContainer.querySelectorAll<HTMLElement>('.chronos-city-card');
 
-    // 1. HTML5 Drag and Drop Handlers
     draggableCards.forEach((card) => {
       const row = card.closest('.chronos-row-draggable') as HTMLElement | null;
       const cityId = row?.dataset.cityId;
       if (!row || !cityId) return;
 
-      card.addEventListener('dragstart', (e) => {
-        draggedCityId = cityId;
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', cityId);
-          try {
-            e.dataTransfer.setData('application/json', JSON.stringify({ cityId }));
-          } catch (_) {}
-        }
-        setTimeout(() => {
-          row.classList.add('is-dragging-row');
-        }, 10);
-      });
-
-      card.addEventListener('dragend', () => {
-        draggedCityId = null;
-        cityRowsContainer.querySelectorAll<HTMLElement>('.chronos-row-draggable').forEach((r) => {
-          r.classList.remove('is-dragging-row', 'is-drop-target-top', 'is-drop-target-bottom');
-        });
-      });
-
-      // 2. Direct Mouse/Pointer Drag Reorder Handler (for Desktop WebViews)
       card.addEventListener('pointerdown', (e: PointerEvent) => {
+        if (e.button !== 0) return;
         const target = e.target as HTMLElement;
-        if (target.closest('button')) return;
+        if (target.closest('button') || target.closest('a') || target.closest('input')) return;
+
+        e.preventDefault();
+        try {
+          card.setPointerCapture(e.pointerId);
+        } catch (_) {}
 
         draggedCityId = cityId;
         isPointerDragging = true;
         row.classList.add('is-dragging-row');
 
-        const onPointerMoveWindow = (moveEvent: PointerEvent) => {
+        const onPointerMove = (moveEvent: PointerEvent) => {
           if (!isPointerDragging || !draggedCityId) return;
           moveEvent.preventDefault();
 
@@ -927,10 +1027,16 @@ export function initChronosDesktop() {
           }
         };
 
-        const onPointerUpWindow = (upEvent: PointerEvent) => {
-          window.removeEventListener('pointermove', onPointerMoveWindow);
-          window.removeEventListener('pointerup', onPointerUpWindow);
-          
+        const onPointerUp = (upEvent: PointerEvent) => {
+          try {
+            card.releasePointerCapture(upEvent.pointerId);
+          } catch (_) {}
+          card.removeEventListener('pointermove', onPointerMove);
+          card.removeEventListener('pointerup', onPointerUp);
+          card.removeEventListener('pointercancel', onPointerUp);
+          window.removeEventListener('pointermove', onPointerMove);
+          window.removeEventListener('pointerup', onPointerUp);
+
           if (!isPointerDragging || !draggedCityId) return;
           isPointerDragging = false;
           row.classList.remove('is-dragging-row');
@@ -938,11 +1044,11 @@ export function initChronosDesktop() {
           if (currentDropTargetRow) {
             const targetCityId = currentDropTargetRow.dataset.cityId;
             currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
-            
+
             if (targetCityId && targetCityId !== draggedCityId) {
-              const ws = getActiveWorkspace();
-              const srcIdx = ws.cities.findIndex((c) => c.id === draggedCityId);
-              let targetIdx = ws.cities.findIndex((c) => c.id === targetCityId);
+              const activeWs = getActiveWorkspace();
+              const srcIdx = activeWs.cities.findIndex((c) => c.id === draggedCityId);
+              let targetIdx = activeWs.cities.findIndex((c) => c.id === targetCityId);
 
               if (srcIdx !== -1 && targetIdx !== -1) {
                 const rect = currentDropTargetRow.getBoundingClientRect();
@@ -950,8 +1056,14 @@ export function initChronosDesktop() {
                 if (upEvent.clientY >= midY && srcIdx > targetIdx) {
                   targetIdx += 1;
                 }
-                const [movedCity] = ws.cities.splice(srcIdx, 1);
-                ws.cities.splice(targetIdx, 0, movedCity);
+                const [movedCity] = activeWs.cities.splice(srcIdx, 1);
+                activeWs.cities.splice(targetIdx, 0, movedCity);
+
+                // Update isBase flag: index 0 is always the base
+                activeWs.cities.forEach((c, idx) => {
+                  c.isBase = idx === 0;
+                });
+
                 saveWorkspacesToStorage();
                 renderCityRows();
                 updateClocks();
@@ -962,83 +1074,13 @@ export function initChronosDesktop() {
           draggedCityId = null;
         };
 
-        window.addEventListener('pointermove', onPointerMoveWindow);
-        window.addEventListener('pointerup', onPointerUpWindow);
+        card.addEventListener('pointermove', onPointerMove);
+        card.addEventListener('pointerup', onPointerUp);
+        card.addEventListener('pointercancel', onPointerUp);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
       });
     });
-
-    cityRowsContainer.ondragover = (e: DragEvent) => {
-      if (!draggedCityId) return;
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-
-      const targetRow = (e.target as HTMLElement).closest('.chronos-row-draggable') as HTMLElement | null;
-      if (!targetRow || targetRow.dataset.cityId === draggedCityId) {
-        if (currentDropTargetRow && currentDropTargetRow !== targetRow) {
-          currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
-          currentDropTargetRow = null;
-        }
-        return;
-      }
-
-      if (currentDropTargetRow && currentDropTargetRow !== targetRow) {
-        currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
-      }
-
-      currentDropTargetRow = targetRow;
-      const rect = targetRow.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-
-      if (e.clientY < midY) {
-        targetRow.classList.add('is-drop-target-top');
-        targetRow.classList.remove('is-drop-target-bottom');
-      } else {
-        targetRow.classList.add('is-drop-target-bottom');
-        targetRow.classList.remove('is-drop-target-top');
-      }
-    };
-
-    cityRowsContainer.ondragleave = (e: DragEvent) => {
-      if (e.relatedTarget && !cityRowsContainer.contains(e.relatedTarget as Node)) {
-        if (currentDropTargetRow) {
-          currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
-          currentDropTargetRow = null;
-        }
-      }
-    };
-
-    cityRowsContainer.ondrop = (e: DragEvent) => {
-      if (!draggedCityId) return;
-      e.preventDefault();
-
-      const targetRow = (e.target as HTMLElement).closest('.chronos-row-draggable') as HTMLElement | null;
-      if (currentDropTargetRow) {
-        currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
-        currentDropTargetRow = null;
-      }
-
-      if (!targetRow || targetRow.dataset.cityId === draggedCityId) return;
-      const targetCityId = targetRow.dataset.cityId;
-      if (!targetCityId) return;
-
-      const ws = getActiveWorkspace();
-      const srcIdx = ws.cities.findIndex((c) => c.id === draggedCityId);
-      let targetIdx = ws.cities.findIndex((c) => c.id === targetCityId);
-
-      if (srcIdx !== -1 && targetIdx !== -1) {
-        const rect = targetRow.getBoundingClientRect();
-        const midY = rect.top + rect.height / 2;
-        if (e.clientY >= midY && srcIdx > targetIdx) {
-          targetIdx += 1;
-        }
-
-        const [movedCity] = ws.cities.splice(srcIdx, 1);
-        ws.cities.splice(targetIdx, 0, movedCity);
-        saveWorkspacesToStorage();
-        renderCityRows();
-        updateClocks();
-      }
-    };
 
     updateClocks();
   }
@@ -1085,9 +1127,21 @@ export function initChronosDesktop() {
     if (ws.cities.some((c) => c.id === city.id)) {
       return;
     }
-    ws.cities.push({ ...city, isBase: false });
+    const baseCity = getBaseCity(ws);
+    const offset = getCityRelativeOffsetHours(city, baseCity);
+    const badge = formatOffsetBadge(offset, false);
+    const statusLabel = getCityStatusLabel(city.timezone);
+
+    ws.cities.push({
+      ...city,
+      offsetHours: offset,
+      badge,
+      statusLabel,
+      isBase: ws.cities.length === 0,
+    });
     saveWorkspacesToStorage();
     renderCityRows();
+    updateClocks();
     closeCommandPalette();
 
     setTimeout(() => {
@@ -1692,10 +1746,17 @@ export function initChronosDesktop() {
       const { dateCompact } = getSelectedDateISOParts();
       const startIso = `${dateCompact}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
       const endIso = `${dateCompact}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
+      const baseCity = getBaseCity(ws);
 
       const details = encodeURIComponent(
         `Scheduled with RealTimeZones (${ws.name})\n\n` +
-        ws.cities.map((c) => `• ${c.name} (${c.flag || ''}): ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} (${c.statusLabel || ''})`).join('\n') +
+        ws.cities.map((c, idx) => {
+          const isBase = c.isBase || idx === 0;
+          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+          const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
+          const status = getCityStatusLabel(c.timezone);
+          return `• ${c.name} (${c.flag || ''}): ${t} (${status})`;
+        }).join('\n') +
         '\n\nhttps://realtimezones.com'
       );
 
@@ -1710,6 +1771,7 @@ export function initChronosDesktop() {
     exportOutlookBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const ws = getActiveWorkspace();
+      const baseCity = getBaseCity(ws);
       const title = encodeURIComponent(`Team Sync (${ws.name})`);
       const startH = Math.floor(focusHour);
       const startM = Math.round((focusHour - startH) * 60);
@@ -1723,7 +1785,13 @@ export function initChronosDesktop() {
 
       const details = encodeURIComponent(
         `Scheduled with RealTimeZones (${ws.name})\n\n` +
-        ws.cities.map((c) => `• ${c.name} (${c.flag || ''}): ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} (${c.statusLabel || ''})`).join('\n') +
+        ws.cities.map((c, idx) => {
+          const isBase = c.isBase || idx === 0;
+          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+          const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
+          const status = getCityStatusLabel(c.timezone);
+          return `• ${c.name} (${c.flag || ''}): ${t} (${status})`;
+        }).join('\n') +
         '\n\nhttps://realtimezones.com'
       );
 
@@ -1737,6 +1805,7 @@ export function initChronosDesktop() {
   async function triggerIcsDownload(openInCalendar: boolean = false, e?: Event) {
     if (e) e.stopPropagation();
     const ws = getActiveWorkspace();
+    const baseCity = getBaseCity(ws);
     const startH = Math.floor(focusHour);
     const startM = Math.round((focusHour - startH) * 60);
     const endTotalM = startH * 60 + startM + selectedMeetingDurationMinutes;
@@ -1750,7 +1819,12 @@ export function initChronosDesktop() {
     const description = [
       `Scheduled via RealTimeZones (${ws.name})`,
       '',
-      ...ws.cities.map((c) => `• ${c.name}: ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)}`),
+      ...ws.cities.map((c, idx) => {
+        const isBase = c.isBase || idx === 0;
+        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+        const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
+        return `• ${c.name}: ${t}`;
+      }),
       '',
       'https://realtimezones.com'
     ].join('\\n');
@@ -1852,16 +1926,19 @@ export function initChronosDesktop() {
       const slotHour = topSlot ? topSlot.hour : focusHour;
       const startH = formatTime(slotHour, is24Hour);
       const endH = formatTime(slotHour + selectedMeetingDurationMinutes / 60, is24Hour);
-      const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
+      const baseCity = getBaseCity(ws);
 
       const inviteText = [
         `🗓️ Proposed Meeting: ${ws.name} (${activeSelectedDate})`,
         `⏰ Time Window: ${startH} – ${endH} (${baseCity?.name || 'Local'} Time)`,
         '',
         '👥 Local Times for Participants:',
-        ...ws.cities.map((c) => {
-          const t = formatTime((slotHour + c.offsetHours + 24) % 24, is24Hour);
-          return `  • ${c.name} (${c.flag || ''}): ${t} (${c.statusLabel || ''})`;
+        ...ws.cities.map((c, idx) => {
+          const isBase = c.isBase || idx === 0;
+          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+          const t = formatTime((slotHour + offset + 24) % 24, is24Hour);
+          const status = getCityStatusLabel(c.timezone);
+          return `  • ${c.name} (${c.flag || ''}): ${t} (${status})`;
         }),
         '',
         `⚡ Coordinated via RealTimeZones • https://realtimezones.com`,
@@ -2245,8 +2322,12 @@ export function initChronosDesktop() {
   // Update clocks, availability & intelligence panel
   function updateClocks() {
     const ws = getActiveWorkspace();
-    ws.cities.forEach((city) => {
-      const localHourFloat = (focusHour + city.offsetHours + 24) % 24;
+    const baseCity = getBaseCity(ws);
+
+    ws.cities.forEach((city, cityIndex) => {
+      const isBase = city.isBase || cityIndex === 0;
+      const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
+      const localHourFloat = (focusHour + offset + 24) % 24;
       const clockEl = document.getElementById(`clock-${city.id}`);
       const statusDot = document.getElementById(`dot-${city.id}`);
       const statusText = document.getElementById(`status-${city.id}`);
@@ -2257,7 +2338,7 @@ export function initChronosDesktop() {
 
       let status: 'working' | 'border' | 'sleep' = 'sleep';
       let statusName = 'Sleep';
-      const offsetInfo = city.statusLabel;
+      const offsetInfo = getCityStatusLabel(city.timezone);
 
       if (localHourFloat >= workStartHour && localHourFloat < workEndHour) {
         status = 'working';
@@ -2328,9 +2409,9 @@ export function initChronosDesktop() {
   function syncTauriDesktopIntegration() {
     if (typeof window === 'undefined') return;
     const ws = getActiveWorkspace();
+    const baseCity = getBaseCity(ws);
     const bestSlots = calculateBestTimes();
     const topSlot = bestSlots[0];
-    const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
     const baseCode = baseCity ? (baseCity.badge === 'Base' ? baseCity.name : baseCity.badge) : 'Local';
     const overlapStr = topSlot
       ? `${formatTime(topSlot.hour, is24Hour)} – ${formatTime(topSlot.hour + selectedMeetingDurationMinutes / 60, is24Hour)} (${baseCode})`
@@ -2338,8 +2419,10 @@ export function initChronosDesktop() {
 
     const lines = [
       `RealTimeZones • ${ws.name}`,
-      ...ws.cities.map((c) => {
-        const localH = (focusHour + c.offsetHours + 24) % 24;
+      ...ws.cities.map((c, idx) => {
+        const isBase = c.isBase || idx === 0;
+        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+        const localH = (focusHour + offset + 24) % 24;
         const isWorking = localH >= workStartHour && localH < workEndHour;
         const status = isWorking ? 'Working' : 'Sleep';
         return `• ${c.name}: ${formatTime(localH, is24Hour)} (${status})`;
@@ -2360,6 +2443,7 @@ export function initChronosDesktop() {
   // --- Dynamic Live Menu Bar Glance Rendering ---
   function renderMenuBarGlance() {
     const ws = getActiveWorkspace();
+    const baseCity = getBaseCity(ws);
     if (menubarWsName) menubarWsName.textContent = ws.name;
 
     if (menubarCitiesList) {
@@ -2371,8 +2455,10 @@ export function initChronosDesktop() {
         `;
       } else {
         menubarCitiesList.innerHTML = ws.cities
-          .map((city) => {
-            const localHourFloat = (focusHour + city.offsetHours + 24) % 24;
+          .map((city, cityIndex) => {
+            const isBase = city.isBase || cityIndex === 0;
+            const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
+            const localHourFloat = (focusHour + offset + 24) % 24;
             const isWorking = localHourFloat >= workStartHour && localHourFloat < workEndHour;
             const isBorder =
               (localHourFloat >= Math.max(0, workStartHour - 2) && localHourFloat < workStartHour) ||
@@ -2386,7 +2472,7 @@ export function initChronosDesktop() {
             }
 
             const formattedTime = formatTime(localHourFloat, is24Hour);
-            const badgeText = city.isBase ? 'Base' : (city.badge || `+${city.offsetHours}h`);
+            const badgeText = formatOffsetBadge(offset, isBase);
 
             return `
               <div class="p-3 px-3.5 flex items-center justify-between hover:bg-[#16161c] transition-colors select-none">
@@ -2411,7 +2497,6 @@ export function initChronosDesktop() {
     }
 
     // Dynamic Overlap Ribbon
-    const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
     const baseCode = baseCity ? (baseCity.badge === 'Base' ? baseCity.name.slice(0, 3).toUpperCase() : baseCity.badge) : '';
     const bestSlots = calculateBestTimes();
 
@@ -2493,17 +2578,19 @@ export function initChronosDesktop() {
   if (menubarBtnCopy) {
     menubarBtnCopy.addEventListener('click', () => {
       const ws = getActiveWorkspace();
+      const baseCity = getBaseCity(ws);
       const bestSlots = calculateBestTimes();
       const topSlot = bestSlots[0];
       const startH = formatTime(topSlot ? topSlot.hour : focusHour, is24Hour);
       const endH = formatTime((topSlot ? topSlot.hour : focusHour) + selectedMeetingDurationMinutes / 60, is24Hour);
-      const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
 
       const lines = [
         `🗓️ Meeting Slot (${ws.name}): ${startH} – ${endH} ${baseCity?.name || 'Base'}`,
         '',
-        ...ws.cities.map((c) => {
-          const t = formatTime((topSlot ? topSlot.hour : focusHour) + c.offsetHours, is24Hour);
+        ...ws.cities.map((c, idx) => {
+          const isBase = c.isBase || idx === 0;
+          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+          const t = formatTime((topSlot ? topSlot.hour : focusHour) + offset, is24Hour);
           return `• ${c.name} (${c.flag || ''}): ${t}`;
         }),
       ];
@@ -2669,20 +2756,22 @@ export function initChronosDesktop() {
 
   // Snap to NOW
   function snapToNow() {
+    const ws = getActiveWorkspace();
+    const baseCity = getBaseCity(ws);
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Europe/London',
+      timeZone: baseCity.timezone || 'Asia/Kolkata',
       hour: 'numeric',
       minute: 'numeric',
       hour12: false,
     });
     const parts = formatter.formatToParts(now);
-    const hPart = parts.find((p) => p.type === 'hour')?.value || '12';
-    const mPart = parts.find((p) => p.type === 'minute')?.value || '0';
-    const currentLondonHour = parseInt(hPart, 10);
-    const currentLondonMin = parseInt(mPart, 10);
+    let hPart = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+    if (hPart === 24) hPart = 0;
+    const mPart = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
 
-    focusHour = currentLondonHour + Math.round(currentLondonMin / 15) * 0.25;
+    const step = scrubStepMinutes || 15;
+    focusHour = hPart + Math.round(mPart / step) * (step / 60);
     updateClocks();
   }
 
@@ -2714,8 +2803,11 @@ export function initChronosDesktop() {
     copySlotBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const ws = getActiveWorkspace();
-      const parts = ws.cities.map((c) => {
-        const time = formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour);
+      const baseCity = getBaseCity(ws);
+      const parts = ws.cities.map((c, idx) => {
+        const isBase = c.isBase || idx === 0;
+        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
+        const time = formatTime((focusHour + offset + 24) % 24, is24Hour);
         return `${time} ${c.name}`;
       });
       const text = `Meeting Slot: ${parts.join(' | ')}`;
