@@ -937,6 +937,28 @@ const getHourStatusClass = (localHour: number) => {
     cursor: ew-resize !important;
   }
 
+  /* Enable Native Mouse & Touch Drag on City Cards & Handles */
+  .chronos-city-card,
+  .chronos-drag-handle {
+    -webkit-user-drag: element !important;
+    user-drag: element !important;
+    touch-action: none;
+  }
+
+  .chronos-row-draggable.is-dragging-row {
+    opacity: 0.35 !important;
+    transform: scale(0.985);
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .chronos-row-draggable.is-drop-target-top {
+    border-top: 2px solid #34d399 !important;
+  }
+
+  .chronos-row-draggable.is-drop-target-bottom {
+    border-bottom: 2px solid #34d399 !important;
+  }
+
   /* Clean Dark Minimalist Scrollbars - No harsh white outlines */
   ::-webkit-scrollbar {
     width: 4px;

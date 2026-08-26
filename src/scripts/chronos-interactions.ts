@@ -751,9 +751,9 @@ export function initChronosDesktop() {
         }
 
         return `
-          <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative" id="row-${city.id}" data-city-id="${city.id}">
-            <!-- Left City Card with Hover Actions & Drag Handle -->
-            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" draggable="true">
+          <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative select-none" id="row-${city.id}" data-city-id="${city.id}">
+            <!-- Left City Card with Hover Actions (Draggable Card) -->
+            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" draggable="true" data-city-id="${city.id}">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
                   <span class="text-base leading-none shrink-0">${city.flag}</span>
@@ -796,12 +796,12 @@ export function initChronosDesktop() {
               </div>
 
               <!-- Clock Display -->
-              <div id="clock-${city.id}" class="font-mono text-3xl font-bold tracking-tight text-white">
+              <div id="clock-${city.id}" class="font-mono text-3xl font-bold tracking-tight text-white pointer-events-none">
                 --:--
               </div>
 
               <!-- Status Dot and Label -->
-              <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-mono">
+              <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-mono pointer-events-none">
                 <span id="dot-${city.id}" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
                 <span id="status-${city.id}">--</span>
               </div>
@@ -858,11 +858,13 @@ export function initChronosDesktop() {
       btn.addEventListener('pointerdown', (e) => e.stopPropagation());
     });
 
-    // Wire Bulletproof Drag and Drop City Reordering
+    // Wire Dual HTML5 + Mouse/Pointer Drag Reordering
     let draggedCityId: string | null = null;
+    let isPointerDragging = false;
     let currentDropTargetRow: HTMLElement | null = null;
     const draggableCards = cityRowsContainer.querySelectorAll<HTMLElement>('.chronos-city-card');
 
+    // 1. HTML5 Drag and Drop Handlers
     draggableCards.forEach((card) => {
       const row = card.closest('.chronos-row-draggable') as HTMLElement | null;
       const cityId = row?.dataset.cityId;
@@ -878,19 +880,90 @@ export function initChronosDesktop() {
           } catch (_) {}
         }
         setTimeout(() => {
-          row.classList.add('opacity-30', 'scale-[0.99]');
+          row.classList.add('is-dragging-row');
         }, 10);
       });
 
       card.addEventListener('dragend', () => {
         draggedCityId = null;
-        if (currentDropTargetRow) {
-          currentDropTargetRow.classList.remove('border-t-2', 'border-b-2', 'border-emerald-400');
-          currentDropTargetRow = null;
-        }
         cityRowsContainer.querySelectorAll<HTMLElement>('.chronos-row-draggable').forEach((r) => {
-          r.classList.remove('opacity-30', 'scale-[0.99]', 'border-t-2', 'border-b-2', 'border-emerald-400');
+          r.classList.remove('is-dragging-row', 'is-drop-target-top', 'is-drop-target-bottom');
         });
+      });
+
+      // 2. Direct Mouse/Pointer Drag Reorder Handler (for Desktop WebViews)
+      card.addEventListener('pointerdown', (e: PointerEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) return;
+
+        draggedCityId = cityId;
+        isPointerDragging = true;
+        row.classList.add('is-dragging-row');
+
+        const onPointerMoveWindow = (moveEvent: PointerEvent) => {
+          if (!isPointerDragging || !draggedCityId) return;
+          moveEvent.preventDefault();
+
+          const elementUnder = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
+          const targetRow = elementUnder?.closest('.chronos-row-draggable') as HTMLElement | null;
+
+          cityRowsContainer.querySelectorAll<HTMLElement>('.chronos-row-draggable').forEach((r) => {
+            if (r !== targetRow) {
+              r.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
+            }
+          });
+
+          if (targetRow && targetRow.dataset.cityId !== draggedCityId) {
+            currentDropTargetRow = targetRow;
+            const rect = targetRow.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            if (moveEvent.clientY < midY) {
+              targetRow.classList.add('is-drop-target-top');
+              targetRow.classList.remove('is-drop-target-bottom');
+            } else {
+              targetRow.classList.add('is-drop-target-bottom');
+              targetRow.classList.remove('is-drop-target-top');
+            }
+          }
+        };
+
+        const onPointerUpWindow = (upEvent: PointerEvent) => {
+          window.removeEventListener('pointermove', onPointerMoveWindow);
+          window.removeEventListener('pointerup', onPointerUpWindow);
+          
+          if (!isPointerDragging || !draggedCityId) return;
+          isPointerDragging = false;
+          row.classList.remove('is-dragging-row');
+
+          if (currentDropTargetRow) {
+            const targetCityId = currentDropTargetRow.dataset.cityId;
+            currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
+            
+            if (targetCityId && targetCityId !== draggedCityId) {
+              const ws = getActiveWorkspace();
+              const srcIdx = ws.cities.findIndex((c) => c.id === draggedCityId);
+              let targetIdx = ws.cities.findIndex((c) => c.id === targetCityId);
+
+              if (srcIdx !== -1 && targetIdx !== -1) {
+                const rect = currentDropTargetRow.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (upEvent.clientY >= midY && srcIdx > targetIdx) {
+                  targetIdx += 1;
+                }
+                const [movedCity] = ws.cities.splice(srcIdx, 1);
+                ws.cities.splice(targetIdx, 0, movedCity);
+                saveWorkspacesToStorage();
+                renderCityRows();
+                updateClocks();
+              }
+            }
+            currentDropTargetRow = null;
+          }
+          draggedCityId = null;
+        };
+
+        window.addEventListener('pointermove', onPointerMoveWindow);
+        window.addEventListener('pointerup', onPointerUpWindow);
       });
     });
 
@@ -902,14 +975,14 @@ export function initChronosDesktop() {
       const targetRow = (e.target as HTMLElement).closest('.chronos-row-draggable') as HTMLElement | null;
       if (!targetRow || targetRow.dataset.cityId === draggedCityId) {
         if (currentDropTargetRow && currentDropTargetRow !== targetRow) {
-          currentDropTargetRow.classList.remove('border-t-2', 'border-b-2', 'border-emerald-400');
+          currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
           currentDropTargetRow = null;
         }
         return;
       }
 
       if (currentDropTargetRow && currentDropTargetRow !== targetRow) {
-        currentDropTargetRow.classList.remove('border-t-2', 'border-b-2', 'border-emerald-400');
+        currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
       }
 
       currentDropTargetRow = targetRow;
@@ -917,18 +990,18 @@ export function initChronosDesktop() {
       const midY = rect.top + rect.height / 2;
 
       if (e.clientY < midY) {
-        targetRow.classList.add('border-t-2', 'border-t-emerald-400');
-        targetRow.classList.remove('border-b-2', 'border-b-emerald-400');
+        targetRow.classList.add('is-drop-target-top');
+        targetRow.classList.remove('is-drop-target-bottom');
       } else {
-        targetRow.classList.add('border-b-2', 'border-b-emerald-400');
-        targetRow.classList.remove('border-t-2', 'border-t-emerald-400');
+        targetRow.classList.add('is-drop-target-bottom');
+        targetRow.classList.remove('is-drop-target-top');
       }
     };
 
     cityRowsContainer.ondragleave = (e: DragEvent) => {
       if (e.relatedTarget && !cityRowsContainer.contains(e.relatedTarget as Node)) {
         if (currentDropTargetRow) {
-          currentDropTargetRow.classList.remove('border-t-2', 'border-b-2', 'border-emerald-400');
+          currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
           currentDropTargetRow = null;
         }
       }
@@ -940,7 +1013,7 @@ export function initChronosDesktop() {
 
       const targetRow = (e.target as HTMLElement).closest('.chronos-row-draggable') as HTMLElement | null;
       if (currentDropTargetRow) {
-        currentDropTargetRow.classList.remove('border-t-2', 'border-b-2', 'border-emerald-400');
+        currentDropTargetRow.classList.remove('is-drop-target-top', 'is-drop-target-bottom');
         currentDropTargetRow = null;
       }
 
@@ -957,8 +1030,6 @@ export function initChronosDesktop() {
         const midY = rect.top + rect.height / 2;
         if (e.clientY >= midY && srcIdx > targetIdx) {
           targetIdx += 1;
-        } else if (e.clientY < midY && srcIdx < targetIdx) {
-          // targetIdx remains same
         }
 
         const [movedCity] = ws.cities.splice(srcIdx, 1);
@@ -1564,9 +1635,52 @@ export function initChronosDesktop() {
     });
   }
 
+  // Cross-Platform External Browser URL Opener (Works inside Tauri Desktop & Web)
+  function openExternalBrowserUrl(url: string) {
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.opener && typeof tauri.opener.openUrl === 'function') {
+        tauri.opener.openUrl(url);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
+        tauri.core.invoke('plugin:opener|open_url', { url });
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (_) {
+      window.open(url, '_blank');
+    }
+  }
+
+  function getSelectedDateISOParts(): { dateCompact: string; dateDashed: string } {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+    const dd = today.getDate().toString().padStart(2, '0');
+    return {
+      dateCompact: `${yyyy}${mm}${dd}`,
+      dateDashed: `${yyyy}-${mm}-${dd}`,
+    };
+  }
+
   // Google Calendar Export
   if (exportGoogleBtn) {
-    exportGoogleBtn.addEventListener('click', () => {
+    exportGoogleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const ws = getActiveWorkspace();
       const title = encodeURIComponent(`Team Sync (${ws.name})`);
       const startH = Math.floor(focusHour);
@@ -1575,24 +1689,26 @@ export function initChronosDesktop() {
       const endH = Math.floor(endTotalM / 60) % 24;
       const endM = endTotalM % 60;
 
-      const dateStr = '20260824';
-      const startIso = `${dateStr}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
-      const endIso = `${dateStr}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
+      const { dateCompact } = getSelectedDateISOParts();
+      const startIso = `${dateCompact}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
+      const endIso = `${dateCompact}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
 
       const details = encodeURIComponent(
-        `Scheduled with Chronos Timezones (${ws.name})\n\n` +
-        ws.cities.map((c) => `${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} ${c.name}`).join('\n')
+        `Scheduled with RealTimeZones (${ws.name})\n\n` +
+        ws.cities.map((c) => `• ${c.name} (${c.flag || ''}): ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} (${c.statusLabel || ''})`).join('\n') +
+        '\n\nhttps://realtimezones.com'
       );
 
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&details=${details}`;
-      window.open(url, '_blank');
+      openExternalBrowserUrl(url);
       closeCalendarDropdown();
     });
   }
 
   // Outlook Web Calendar Export
   if (exportOutlookBtn) {
-    exportOutlookBtn.addEventListener('click', () => {
+    exportOutlookBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const ws = getActiveWorkspace();
       const title = encodeURIComponent(`Team Sync (${ws.name})`);
       const startH = Math.floor(focusHour);
@@ -1601,22 +1717,25 @@ export function initChronosDesktop() {
       const endH = Math.floor(endTotalM / 60) % 24;
       const endM = endTotalM % 60;
 
-      const startIso = `2026-08-24T${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}:00Z`;
-      const endIso = `2026-08-24T${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}:00Z`;
+      const { dateDashed } = getSelectedDateISOParts();
+      const startIso = `${dateDashed}T${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}:00Z`;
+      const endIso = `${dateDashed}T${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}:00Z`;
 
       const details = encodeURIComponent(
-        `Scheduled with Chronos Timezones (${ws.name})\n\n` +
-        ws.cities.map((c) => `${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} ${c.name}`).join('\n')
+        `Scheduled with RealTimeZones (${ws.name})\n\n` +
+        ws.cities.map((c) => `• ${c.name} (${c.flag || ''}): ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)} (${c.statusLabel || ''})`).join('\n') +
+        '\n\nhttps://realtimezones.com'
       );
 
       const url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&startdt=${startIso}&enddt=${endIso}&body=${details}`;
-      window.open(url, '_blank');
+      openExternalBrowserUrl(url);
       closeCalendarDropdown();
     });
   }
 
-  // Apple & .ICS Export
-  function triggerIcsDownload() {
+  // Apple Calendar & .ICS Export
+  function triggerIcsDownload(e?: Event) {
+    if (e) e.stopPropagation();
     const ws = getActiveWorkspace();
     const startH = Math.floor(focusHour);
     const startM = Math.round((focusHour - startH) * 60);
@@ -1624,31 +1743,51 @@ export function initChronosDesktop() {
     const endH = Math.floor(endTotalM / 60) % 24;
     const endM = endTotalM % 60;
 
-    const startIso = `20260824T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
-    const endIso = `20260824T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
+    const { dateCompact } = getSelectedDateISOParts();
+    const startIso = `${dateCompact}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
+    const endIso = `${dateCompact}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
+
+    const description = [
+      `Scheduled via RealTimeZones (${ws.name})`,
+      '',
+      ...ws.cities.map((c) => `• ${c.name}: ${formatTime((focusHour + c.offsetHours + 24) % 24, is24Hour)}`),
+      '',
+      'https://realtimezones.com'
+    ].join('\\n');
 
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Chronos//Timezone Workspace//EN',
+      'PRODID:-//RealTimeZones//Timezone Workspace//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
       'BEGIN:VEVENT',
-      `UID:${Date.now()}@chronos.local`,
+      `UID:rtz-${Date.now()}@realtimezones.com`,
       `DTSTAMP:${startIso}`,
       `DTSTART:${startIso}`,
       `DTEND:${endIso}`,
       `SUMMARY:Team Sync (${ws.name})`,
-      `DESCRIPTION:Scheduled via Chronos Timezones (${ws.name})`,
+      `DESCRIPTION:${description}`,
+      'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', `team-sync-${ws.id}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 1. Copy ics file content / invite to clipboard
+    copyToClipboard(icsContent);
+
+    // 2. Trigger native download
+    try {
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `team-sync-${ws.id || 'workspace'}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+    } catch (_) {}
 
     closeCalendarDropdown();
   }
@@ -2370,6 +2509,8 @@ export function initChronosDesktop() {
         target.closest('#chronos-edit-workspace-modal') ||
         target.closest('#chronos-date-dropdown') ||
         target.closest('#chronos-intelligence-panel') ||
+        target.closest('.chronos-city-card') ||
+        target.closest('.chronos-drag-handle') ||
         (target.closest('.group') && target.closest('[data-action="delete-city"]')))
     ) {
       return;
