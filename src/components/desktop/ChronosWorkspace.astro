@@ -743,16 +743,6 @@ const getHourStatusClass = (localHour: number) => {
             <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
             <span>Quick Start Guide</span>
           </button>
-
-          <button 
-            id="chronos-btn-replay-intro" 
-            type="button" 
-            class="h-8 px-3 rounded-xl text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 border border-[#272734] transition-colors cursor-pointer flex items-center gap-1.5"
-            title="Replay Brand Intro Animation"
-          >
-            <svg class="w-3.5 h-3.5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span>Replay Intro</span>
-          </button>
         </div>
 
         <div class="flex items-center gap-2">
@@ -872,25 +862,81 @@ const getHourStatusClass = (localHour: number) => {
   </div>
 </div>
 
-<!-- First-Run Cinematic Intro Splash Screen (Full-Screen Immersive Native Reveal) -->
+<!-- First-Run Cinematic Intro Splash Screen (Pure Native SVG Hardware-Accelerated Animation) -->
 <div 
   id="chronos-intro-splash" 
-  class="fixed inset-0 z-[100] w-screen h-screen bg-black hidden items-center justify-center select-none overflow-hidden transition-opacity duration-700 pointer-events-auto"
+  class="fixed inset-0 z-[100] w-screen h-screen bg-[#070709] hidden items-center justify-center select-none overflow-hidden transition-opacity duration-700 pointer-events-auto"
 >
-  <video 
-    id="chronos-intro-video" 
-    playsinline 
-    webkit-playsinline 
-    muted 
-    autoplay 
-    preload="auto"
-    class="w-screen h-screen w-full h-full object-cover pointer-events-none"
-  >
-    <source src="/intro.mp4" type="video/mp4" />
-  </video>
+  <div class="flex flex-col items-center gap-6 text-center select-none">
+    <!-- Clock Logo with Luminous Glow & Drawing Circle -->
+    <div class="relative flex items-center justify-center">
+      <div class="absolute w-28 h-28 rounded-full bg-emerald-500/10 blur-2xl animate-pulse"></div>
+      <svg class="w-20 h-20 text-white relative z-10" viewBox="0 0 48 48" fill="none">
+        <!-- Outer Circle with Smooth Stroke Draw Animation -->
+        <circle 
+          cx="24" 
+          cy="24" 
+          r="20" 
+          stroke="white" 
+          stroke-width="3" 
+          stroke-linecap="round"
+          stroke-dasharray="130"
+          stroke-dashoffset="130"
+          class="animate-intro-circle"
+        />
+        <!-- Clock Hands with 360° Physics Sweep Animation -->
+        <g class="origin-[24px_24px] animate-intro-hands">
+          <line x1="24" y1="24" x2="24" y2="12" stroke="white" stroke-width="3.5" stroke-linecap="round" />
+          <line x1="24" y1="24" x2="33" y2="28" stroke="white" stroke-width="3" stroke-linecap="round" />
+          <circle cx="24" cy="24" r="2.5" fill="white" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- Typography Reveal Lockup -->
+    <div class="flex flex-col items-center gap-1.5 animate-intro-text">
+      <h1 class="text-2xl font-bold tracking-tight text-white font-['Geist',sans-serif]">RealTimeZones</h1>
+      <p class="text-xs text-zinc-400 font-medium tracking-wider font-mono">Every Zone. In Real Time.</p>
+    </div>
+  </div>
 </div>
 
 <style is:global>
+  /* Intro Splash Pure SVG Animations */
+  @keyframes introCircleDraw {
+    0% { stroke-dashoffset: 130; opacity: 0; }
+    20% { opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
+  }
+  @keyframes introHandsSweep {
+    0% { transform: rotate(0deg); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: rotate(360deg); opacity: 1; }
+  }
+  @keyframes introTextFade {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-intro-circle {
+    animation: introCircleDraw 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-intro-hands {
+    animation: introHandsSweep 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.2s;
+  }
+  .animate-intro-text {
+    animation: introTextFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.9s;
+    opacity: 0;
+  }
+
+  /* Prevent Text Selection During Timeline Scrubbing */
+  body.is-scrubbing,
+  body.is-scrubbing * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    cursor: ew-resize !important;
+  }
+
   /* Clean Dark Minimalist Scrollbars - No harsh white outlines */
   ::-webkit-scrollbar {
     width: 4px;
@@ -910,6 +956,8 @@ const getHourStatusClass = (localHour: number) => {
   * {
     scrollbar-width: thin;
     scrollbar-color: #2a2a38 transparent;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   /* Eliminate browser-default focus / focus-visible purple/blue outlines */

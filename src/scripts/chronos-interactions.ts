@@ -395,10 +395,8 @@ export function initChronosDesktop() {
   const welcomeBaseCityName = document.getElementById('welcome-base-city-name');
   const welcomeBaseCityTz = document.getElementById('welcome-base-city-tz');
 
-  // First-Run Intro Video Splash DOM
+  // First-Run Intro Splash DOM
   const introSplash = document.getElementById('chronos-intro-splash');
-  const introVideo = document.getElementById('chronos-intro-video') as HTMLVideoElement | null;
-  const replayIntroBtn = document.getElementById('chronos-btn-replay-intro');
 
   function showToast(_message: string) {
     // Disabled toast popup per user request
@@ -1658,17 +1656,37 @@ export function initChronosDesktop() {
   if (exportAppleBtn) exportAppleBtn.addEventListener('click', triggerIcsDownload);
   if (exportIcsFileBtn) exportIcsFileBtn.addEventListener('click', triggerIcsDownload);
 
-  // Share Meeting Link
+  // Share Meeting Link & Formatted Participant Local Times
   if (shareBtn) {
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const url = window.location.href;
-      copyToClipboard(url).then(() => {
+      const ws = getActiveWorkspace();
+      const bestSlots = calculateBestTimes();
+      const topSlot = bestSlots[0];
+      const slotHour = topSlot ? topSlot.hour : focusHour;
+      const startH = formatTime(slotHour, is24Hour);
+      const endH = formatTime(slotHour + selectedMeetingDurationMinutes / 60, is24Hour);
+      const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
+
+      const inviteText = [
+        `🗓️ Proposed Meeting: ${ws.name} (${activeSelectedDate})`,
+        `⏰ Time Window: ${startH} – ${endH} (${baseCity?.name || 'Local'} Time)`,
+        '',
+        '👥 Local Times for Participants:',
+        ...ws.cities.map((c) => {
+          const t = formatTime((slotHour + c.offsetHours + 24) % 24, is24Hour);
+          return `  • ${c.name} (${c.flag || ''}): ${t} (${c.statusLabel || ''})`;
+        }),
+        '',
+        `⚡ Coordinated via RealTimeZones • https://realtimezones.com`,
+      ].join('\n');
+
+      copyToClipboard(inviteText).then(() => {
         const originalHtml = shareBtn.innerHTML;
         shareBtn.classList.add('border-emerald-500/40', 'bg-emerald-950/20');
         shareBtn.innerHTML = `
           <svg class="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-75 duration-150" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          <span class="text-emerald-400 font-semibold text-xs">Copied!</span>
+          <span class="text-emerald-400 font-semibold text-xs">Copied Invite!</span>
         `;
         setTimeout(() => {
           shareBtn.classList.remove('border-emerald-500/40', 'bg-emerald-950/20');
@@ -2025,14 +2043,14 @@ export function initChronosDesktop() {
       const newWorkspace: Workspace = {
         id: newWsId,
         name,
-        cities: [
-          { id: 'lon', name: 'London', country: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', offsetHours: 0, badge: 'Base', statusLabel: 'GMT+1', isBase: true },
-        ],
+        cities: [detectUserLocalCity()],
       };
 
       WORKSPACES.push(newWorkspace);
       activeWorkspaceId = newWsId;
+      saveWorkspacesToStorage();
       if (workspaceNameEl) workspaceNameEl.textContent = name;
+      renderWorkspaceList();
       closeCreateWsModal();
       renderCityRows();
     });
@@ -2335,17 +2353,29 @@ export function initChronosDesktop() {
         return;
       }
     }
+
+    e.preventDefault();
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch (_) {}
+    document.body.classList.add('is-scrubbing');
+
     isDragging = true;
     calculateHourFromX(e.clientX);
   }
 
   function onMouseMove(e: MouseEvent | PointerEvent) {
     if (!isDragging) return;
+    e.preventDefault();
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch (_) {}
     calculateHourFromX(e.clientX);
   }
 
   function stopDrag() {
     isDragging = false;
+    document.body.classList.remove('is-scrubbing');
   }
 
   window.addEventListener('mousemove', onMouseMove);
@@ -2763,13 +2793,35 @@ export function initChronosDesktop() {
 
   if (exportJsonBtn) {
     exportJsonBtn.addEventListener('click', () => {
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(WORKSPACES, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `chronos-workspaces-${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+      const jsonStr = JSON.stringify(WORKSPACES, null, 2);
+      
+      // 1. Copy JSON to clipboard
+      copyToClipboard(jsonStr);
+
+      // 2. Trigger native blob file download
+      try {
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const blobUrl = URL.createObjectURL(blob);
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.href = blobUrl;
+        downloadAnchor.download = `realtimezones-workspaces-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } catch (_) {}
+
+      // 3. Visual button feedback
+      const originalText = exportJsonBtn.innerHTML;
+      exportJsonBtn.classList.add('border-emerald-500/40', 'bg-emerald-950/20');
+      exportJsonBtn.innerHTML = `
+        <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span class="text-emerald-400 font-semibold text-xs">Exported & Copied JSON!</span>
+      `;
+      setTimeout(() => {
+        exportJsonBtn.classList.remove('border-emerald-500/40', 'bg-emerald-950/20');
+        exportJsonBtn.innerHTML = originalText;
+      }, 2000);
     });
   }
 
@@ -2930,18 +2982,12 @@ export function initChronosDesktop() {
     });
   }
 
-  // First-Run Intro Splash Sequence Logic
+  // First-Run Pure Native SVG Intro Splash Sequence
   function playIntroSequence(onComplete?: () => void) {
-    if (!introSplash || !introVideo) {
+    if (!introSplash) {
       if (onComplete) onComplete();
       return;
     }
-
-    // Force strict muted properties for guaranteed HTML5 browser autoplay
-    introVideo.muted = true;
-    introVideo.defaultMuted = true;
-    introVideo.volume = 0;
-    introVideo.playsInline = true;
 
     introSplash.classList.remove('hidden', 'opacity-0');
     introSplash.classList.add('flex', 'opacity-100');
@@ -2962,58 +3008,26 @@ export function initChronosDesktop() {
       }, 700);
     };
 
-    introVideo.onended = finishIntro;
-    introVideo.onerror = finishIntro;
-
-    // Click anywhere on splash overlay to trigger play if browser held it
-    introSplash.onclick = () => {
-      if (introVideo.paused) {
-        introVideo.play().catch(() => finishIntro());
-      }
-    };
-
-    // Safety timer: video is ~8.3s, so fallback to complete after 9.5s
+    // Auto-advance after 2.6s pure SVG animation sequence
     setTimeout(() => {
-      if (!hasFinished) {
-        finishIntro();
-      }
-    }, 9500);
-
-    try {
-      introVideo.currentTime = 0;
-      introVideo.load();
-    } catch (_) {}
-
-    const playPromise = introVideo.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn('Initial autoplay policy check:', err);
-        // Retry strictly muted
-        introVideo.muted = true;
-        introVideo.play().catch(() => {
-          // If still blocked, wait for user click or safety timeout
-        });
-      });
-    }
+      finishIntro();
+    }, 2600);
   }
 
-  if (replayIntroBtn) {
-    replayIntroBtn.addEventListener('click', () => {
-      closeSettingsModal();
-      playIntroSequence();
-    });
-  }
-
-  // Initial render on boot
+  // Initial render on boot: Synchronize active workspace name, dropdown list, city rows and clocks
+  const currentBootWs = getActiveWorkspace();
+  if (workspaceNameEl) workspaceNameEl.textContent = currentBootWs.name;
+  renderWorkspaceList();
   renderCityRows();
+  updateClocks();
 
-  // First-Time Launch Sequence (Intro Video -> Welcome Modal)
+  // First-Time Launch Sequence (Intro Splash -> Welcome Modal)
   if (typeof window !== 'undefined') {
     const hasSeenIntro = localStorage.getItem('rtz-intro-seen-v1');
     const hasSeenWelcome = localStorage.getItem('rtz-welcome-seen-v1');
 
     if (!hasSeenIntro) {
-      // First-ever launch: Play full intro video once, then show welcome guide
+      // First-ever launch: Play smooth SVG reveal once, then show welcome guide
       playIntroSequence(() => {
         if (!hasSeenWelcome) {
           openWelcomeModal();

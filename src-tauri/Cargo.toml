@@ -1,6 +1,6 @@
 [package]
 name = "real-time-zones"
-version = "1.0.0"
+version = "1.0.1"
 description = "RealTimeZones - Cross-Timezone Meeting Planner"
 authors = ["BitSharC"]
 edition = "2021"

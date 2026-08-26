@@ -10,24 +10,34 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Build Tray Context Menu
+            let show_i = MenuItem::with_id(app, "show", "Open RealTimeZones", true, None::<&str>)?;
             let toggle_i = MenuItem::with_id(app, "toggle", "Show / Hide", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit RealTimeZones", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&toggle_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&show_i, &toggle_i, &quit_i])?;
 
-            // Build Tray Icon (macOS Menu Bar / Windows System Tray)
+            // Build Tray Icon (macOS Menu Bar / Windows & Linux System Tray)
             if let Some(icon) = app.default_window_icon() {
                 let _tray = TrayIconBuilder::new()
                     .icon(icon.clone())
-                    .tooltip("RealTimeZones — Meeting Planner")
+                    .tooltip("RealTimeZones — Precision Global Clock")
+                    .title("RealTimeZones")
                     .menu(&menu)
-                    .show_menu_on_left_click(false)
+                    .show_menu_on_left_click(true)
                     .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
                         "toggle" => {
                             if let Some(window) = app.get_webview_window("main") {
                                 if window.is_visible().unwrap_or(false) {
                                     let _ = window.hide();
                                 } else {
                                     let _ = window.show();
+                                    let _ = window.unminimize();
                                     let _ = window.set_focus();
                                 }
                             }
@@ -50,6 +60,7 @@ pub fn run() {
                                     let _ = window.hide();
                                 } else {
                                     let _ = window.show();
+                                    let _ = window.unminimize();
                                     let _ = window.set_focus();
                                 }
                             }
