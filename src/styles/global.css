@@ -74,3 +74,19 @@ button:active, .btn-active:active {
 .hour-block {
   transition: background-color 120ms ease-out, border-color 120ms ease-out, ring-width 120ms ease-out;
 }
+
+/* Strict City Actions Hover Isolation: Hidden on timeline, visible only when hovering inside city panel/card */
+.city-header-panel .remove-btn,
+.chronos-city-card .chronos-delete-btn {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.city-header-panel:hover .remove-btn,
+.chronos-city-card:hover .chronos-delete-btn {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}

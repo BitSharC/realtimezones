@@ -4,13 +4,17 @@
 <header class="sticky top-0 z-30 w-full border-b border-zinc-200 dark:border-zinc-800 bg-white/85 dark:bg-black/85 backdrop-blur-md transition-colors duration-150">
   <div class="max-w-[1400px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
     
-    <!-- Logo & Brand -->
-    <a href="/" class="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md">
+    <!-- Logo & Brand with Clock Hand Sweep Animation -->
+    <a href="/" class="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-md group">
       <!-- Premium Logo Icon -->
       <span class="text-zinc-900 dark:text-zinc-50 shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-[23px] h-[23px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12 6 12 12 16 14"/>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-[23px] h-[23px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" class="opacity-90 group-hover:opacity-100 transition-opacity" />
+          <g class="origin-[12px_12px] group-hover:rotate-[360deg] transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            <line x1="12" y1="12" x2="12" y2="6" stroke-width="2.2" stroke-linecap="round" />
+            <line x1="12" y1="12" x2="16" y2="14" stroke-width="2" stroke-linecap="round" />
+            <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+          </g>
         </svg>
       </span>
       <div class="flex flex-col">

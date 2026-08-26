@@ -1,0 +1,39 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ChronosWorkspace from '../components/desktop/ChronosWorkspace.astro';
+import ChronosMenuBar from '../components/desktop/ChronosMenuBar.astro';
+import ChronosCommandPalette from '../components/desktop/ChronosCommandPalette.astro';
+---
+
+<Layout 
+  title="RealTimeZones — Desktop App" 
+  description="Precision time coordination and overlap engine for global distributed teams."
+>
+  <main class="h-screen w-screen bg-[#070709] flex flex-col overflow-hidden text-white font-['Geist',sans-serif] relative select-none">
+    
+    <!-- Primary App Canvas View -->
+    <div id="view-workspace" class="h-full w-full flex flex-col">
+      <ChronosWorkspace />
+    </div>
+
+    <!-- Floating Native Menu Bar Popover Overlay (Triggered via Header or Menu Bar Mode) -->
+    <div 
+      id="view-menubar-overlay" 
+      class="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs hidden items-start justify-end p-4 sm:p-6 transition-all duration-200"
+    >
+      <div class="flex flex-col items-center gap-3 relative animate-in fade-in slide-in-from-top-4 duration-200">
+        <ChronosMenuBar />
+      </div>
+    </div>
+
+    <!-- Unified Command Palette (Accessible via ⌘K everywhere) -->
+    <ChronosCommandPalette />
+  </main>
+</Layout>
+
+<script>
+  import { initChronosDesktop } from '../scripts/chronos-interactions';
+
+  // Initialize desktop interactions
+  initChronosDesktop();
+</script>

@@ -1856,7 +1856,7 @@ class RealTimeZonesApp {
     const offsetMinutes = getTimezoneOffset(city.timezone, this.selectedDate);
 
     const row = document.createElement('div');
-    row.className = 'flex w-[1312px] sm:w-[1408px] shrink-0 h-16 items-center timeline-row group transition-colors duration-150 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/10';
+    row.className = 'flex w-[1312px] sm:w-[1408px] shrink-0 h-16 items-center timeline-row transition-colors duration-150 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/10';
     row.setAttribute('data-timezone', city.timezone);
 
     // Star/Favorite status
@@ -1900,7 +1900,7 @@ class RealTimeZonesApp {
         ${
           !isHome
             ? `
-              <button class="remove-btn text-zinc-400 dark:text-zinc-650 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer p-0.5 sm:p-1 rounded hover:bg-zinc-150 dark:hover:bg-zinc-900 shrink-0" title="Remove city">
+              <button class="remove-btn text-zinc-400 dark:text-zinc-650 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer p-0.5 sm:p-1 rounded hover:bg-zinc-150 dark:hover:bg-zinc-900 shrink-0" title="Remove city">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
               `
@@ -1925,6 +1925,60 @@ class RealTimeZonesApp {
         this.toggleFavorite(city.timezone);
       });
     }
+
+    // Drag and Drop City Reordering
+    leftPanel.setAttribute('draggable', 'true');
+    leftPanel.classList.add('cursor-grab', 'active:cursor-grabbing');
+
+    leftPanel.addEventListener('dragstart', (e) => {
+      e.dataTransfer?.setData('text/plain', city.timezone);
+      row.classList.add('opacity-40', 'bg-zinc-100/50', 'dark:bg-zinc-900/50');
+    });
+
+    leftPanel.addEventListener('dragend', () => {
+      row.classList.remove('opacity-40', 'bg-zinc-100/50', 'dark:bg-zinc-900/50');
+      this.timelineRowsContainer.querySelectorAll('.timeline-row').forEach((r) => {
+        r.classList.remove('border-t-2', 'border-t-emerald-500', 'border-b-2', 'border-b-emerald-500');
+      });
+    });
+
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const rect = row.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        row.classList.add('border-t-2', 'border-t-emerald-500');
+        row.classList.remove('border-b-2', 'border-b-emerald-500');
+      } else {
+        row.classList.add('border-b-2', 'border-b-emerald-500');
+        row.classList.remove('border-t-2', 'border-t-emerald-500');
+      }
+    });
+
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('border-t-2', 'border-t-emerald-500', 'border-b-2', 'border-b-emerald-500');
+    });
+
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('border-t-2', 'border-t-emerald-500', 'border-b-2', 'border-b-emerald-500');
+      const srcTz = e.dataTransfer?.getData('text/plain');
+      if (srcTz && srcTz !== city.timezone) {
+        const srcIdx = this.cities.findIndex((c) => c.timezone === srcTz);
+        let targetIdx = this.cities.findIndex((c) => c.timezone === city.timezone);
+        if (srcIdx !== -1 && targetIdx !== -1) {
+          const rect = row.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (e.clientY >= midY && srcIdx > targetIdx) {
+            targetIdx += 1;
+          }
+          const [moved] = this.cities.splice(srcIdx, 1);
+          this.cities.splice(targetIdx, 0, moved);
+          this.saveCities();
+          this.renderRows();
+        }
+      }
+    });
 
     row.appendChild(leftPanel);
 
