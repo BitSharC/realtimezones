@@ -2112,6 +2112,7 @@ export function initChronosDesktop() {
 
     updateMeetingQuality();
     renderMenuBarGlance();
+    syncTauriDesktopIntegration();
 
     const container = canvasContainer || scrubberHeader;
     if (container) {
@@ -2135,6 +2136,39 @@ export function initChronosDesktop() {
         }
       }
     }
+  }
+
+  // --- Synchronize Live System Tray Hover Tooltip with Current Cities and Time ---
+  function syncTauriDesktopIntegration() {
+    if (typeof window === 'undefined') return;
+    const ws = getActiveWorkspace();
+    const bestSlots = calculateBestTimes();
+    const topSlot = bestSlots[0];
+    const baseCity = ws.cities.find((c) => c.isBase) || ws.cities[0];
+    const baseCode = baseCity ? (baseCity.badge === 'Base' ? baseCity.name : baseCity.badge) : 'Local';
+    const overlapStr = topSlot
+      ? `${formatTime(topSlot.hour, is24Hour)} – ${formatTime(topSlot.hour + selectedMeetingDurationMinutes / 60, is24Hour)} (${baseCode})`
+      : 'All Day';
+
+    const lines = [
+      `RealTimeZones • ${ws.name}`,
+      ...ws.cities.map((c) => {
+        const localH = (focusHour + c.offsetHours + 24) % 24;
+        const isWorking = localH >= workStartHour && localH < workEndHour;
+        const status = isWorking ? 'Working' : 'Sleep';
+        return `• ${c.name}: ${formatTime(localH, is24Hour)} (${status})`;
+      }),
+      `⭐ Golden Overlap: ${overlapStr}`,
+    ];
+
+    const tooltipText = lines.join('\n');
+
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.core && tauri.core.invoke) {
+        tauri.core.invoke('update_tray_tooltip', { tooltip: tooltipText });
+      }
+    } catch (_) {}
   }
 
   // --- Dynamic Live Menu Bar Glance Rendering ---
@@ -2673,11 +2707,34 @@ export function initChronosDesktop() {
     localStorage.setItem('chronos-work-end', workEndHour.toString());
     localStorage.setItem('chronos-scrub-step', scrubStepMinutes.toString());
 
+    const isMenubarEnabled = settingToggleMenubar ? settingToggleMenubar.checked : true;
+    const isAutostartEnabled = settingToggleAutostart ? settingToggleAutostart.checked : true;
+
     if (settingToggleMenubar) {
-      localStorage.setItem('rtz-setting-menubar', settingToggleMenubar.checked.toString());
+      localStorage.setItem('rtz-setting-menubar', isMenubarEnabled.toString());
     }
     if (settingToggleAutostart) {
-      localStorage.setItem('rtz-setting-autostart', settingToggleAutostart.checked.toString());
+      localStorage.setItem('rtz-setting-autostart', isAutostartEnabled.toString());
+    }
+
+    // Direct Native Desktop Integration (Tauri)
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.core && tauri.core.invoke) {
+        tauri.core.invoke('set_tray_visible', { visible: isMenubarEnabled });
+        tauri.core.invoke('set_close_to_tray', { enabled: isMenubarEnabled });
+      }
+    } catch (_) {}
+
+    // Update Header Menu Bar Glance Button
+    if (btnToggleMenubar) {
+      if (isMenubarEnabled) {
+        btnToggleMenubar.classList.remove('hidden');
+        btnToggleMenubar.classList.add('flex');
+      } else {
+        btnToggleMenubar.classList.add('hidden');
+        btnToggleMenubar.classList.remove('flex');
+      }
     }
 
     // Apply live effects immediately
@@ -3020,6 +3077,28 @@ export function initChronosDesktop() {
   renderWorkspaceList();
   renderCityRows();
   updateClocks();
+
+  // Initialize Desktop & System Integration Settings on Boot
+  if (typeof window !== 'undefined') {
+    const isMenubarEnabled = localStorage.getItem('rtz-setting-menubar') !== 'false';
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.core && tauri.core.invoke) {
+        tauri.core.invoke('set_tray_visible', { visible: isMenubarEnabled });
+        tauri.core.invoke('set_close_to_tray', { enabled: isMenubarEnabled });
+      }
+    } catch (_) {}
+
+    if (btnToggleMenubar) {
+      if (isMenubarEnabled) {
+        btnToggleMenubar.classList.remove('hidden');
+        btnToggleMenubar.classList.add('flex');
+      } else {
+        btnToggleMenubar.classList.add('hidden');
+        btnToggleMenubar.classList.remove('flex');
+      }
+    }
+  }
 
   // First-Time Launch Sequence (Intro Splash -> Welcome Modal)
   if (typeof window !== 'undefined') {
