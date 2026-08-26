@@ -39,17 +39,35 @@ const capitalizeCity = (slug: string) => {
           </p>
         </div>
         
-        <!-- Quick Action Trigger -->
-        <button 
-          type="button" 
-          class="trigger-add-city inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-md shadow-xs transition-colors duration-150 cursor-pointer shrink-0"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add City
-          <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 dark:bg-zinc-200 dark:text-zinc-600 border border-zinc-700 dark:border-zinc-300 shadow-2xs select-none">⌘K</span>
-        </button>
+        <!-- Quick Action Triggers -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <a 
+            href="https://github.com/BitSharC/realtimezones/releases" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 font-medium text-sm rounded-md transition-all duration-150 shrink-0 group"
+            title="Download RealTimeZones native app for macOS, Windows & Linux"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Download App</span>
+            <span class="hidden sm:inline-block text-[10px] font-mono text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 px-1 py-0.2 rounded bg-zinc-50 dark:bg-zinc-950">Desktop</span>
+          </a>
+
+          <button 
+            type="button" 
+            class="trigger-add-city inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-md shadow-xs transition-colors duration-150 cursor-pointer shrink-0"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add City
+            <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 dark:bg-zinc-200 dark:text-zinc-600 border border-zinc-700 dark:border-zinc-300 shadow-2xs select-none">⌘K</span>
+          </button>
+        </div>
       </section>
 
       <!-- Dashboard Controls Section -->
@@ -609,6 +627,15 @@ const capitalizeCity = (slug: string) => {
         <div class="flex flex-col gap-4">
           <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Company</h3>
           <div class="flex flex-col gap-2.5">
+            <a 
+              href="https://github.com/BitSharC/realtimezones/releases" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="hover:text-white text-emerald-400 font-medium transition-colors duration-200 font-sans text-xs w-fit flex items-center gap-1.5"
+            >
+              <span>Download Desktop App</span>
+              <span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">v1.0.5</span>
+            </a>
             <a 
               href="/about" 
               class="hover:text-white transition-colors duration-200 font-sans text-xs text-[#888888] w-fit"
