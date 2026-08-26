@@ -285,8 +285,8 @@ export interface WorkspaceData {
 
 function validateWorkspace(data: any): data is WorkspaceData {
   if (!data || typeof data !== 'object') return false;
-  if (!Array.isArray(data.cities) || !data.cities.every(c => typeof c === 'string')) return false;
-  if (!Array.isArray(data.favorites) || !data.favorites.every(f => typeof f === 'string')) return false;
+  if (!Array.isArray(data.cities) || !data.cities.every((c: unknown) => typeof c === 'string')) return false;
+  if (!Array.isArray(data.favorites) || !data.favorites.every((f: unknown) => typeof f === 'string')) return false;
   if (data.theme !== 'dark' && data.theme !== 'light' && data.theme !== 'system') return false;
   if (data.timeFormat !== '12h' && data.timeFormat !== '24h') return false;
   if (typeof data.duration !== 'number' || data.duration < 15 || data.duration > 1440) return false;
@@ -1964,18 +1964,18 @@ class RealTimeZonesApp {
       row.classList.remove('border-t-2', 'border-t-emerald-500', 'border-b-2', 'border-b-emerald-500');
       const srcTz = e.dataTransfer?.getData('text/plain');
       if (srcTz && srcTz !== city.timezone) {
-        const srcIdx = this.cities.findIndex((c) => c.timezone === srcTz);
-        let targetIdx = this.cities.findIndex((c) => c.timezone === city.timezone);
+        const srcIdx = this.selectedCities.findIndex((c) => c.timezone === srcTz);
+        let targetIdx = this.selectedCities.findIndex((c) => c.timezone === city.timezone);
         if (srcIdx !== -1 && targetIdx !== -1) {
           const rect = row.getBoundingClientRect();
           const midY = rect.top + rect.height / 2;
           if (e.clientY >= midY && srcIdx > targetIdx) {
             targetIdx += 1;
           }
-          const [moved] = this.cities.splice(srcIdx, 1);
-          this.cities.splice(targetIdx, 0, moved);
-          this.saveCities();
-          this.renderRows();
+          const [moved] = this.selectedCities.splice(srcIdx, 1);
+          this.selectedCities.splice(targetIdx, 0, moved);
+          this.saveStateDebounced();
+          this.render();
         }
       }
     });
