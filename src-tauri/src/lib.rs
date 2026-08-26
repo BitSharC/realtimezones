@@ -33,6 +33,48 @@ fn set_close_to_tray(state: tauri::State<AppState>, enabled: bool) -> Result<(),
     Ok(())
 }
 
+#[tauri::command]
+fn save_and_open_ics(
+    app: tauri::AppHandle,
+    filename: String,
+    content: String,
+    open_in_calendar: bool,
+) -> Result<String, String> {
+    let target_dir = app
+        .path()
+        .download_dir()
+        .or_else(|_| app.path().home_dir().map(|h| h.join("Downloads")))
+        .or_else(|_| app.path().temp_dir())
+        .map_err(|e| e.to_string())?;
+
+    let file_path = target_dir.join(&filename);
+    std::fs::write(&file_path, content.as_bytes()).map_err(|e| e.to_string())?;
+
+    if open_in_calendar {
+        let path_str = file_path.to_string_lossy().to_string();
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("cmd")
+                .args(["/C", "start", "", &path_str])
+                .spawn();
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("open")
+                .arg(&path_str)
+                .spawn();
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(&path_str)
+                .spawn();
+        }
+    }
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let close_to_tray = Arc::new(AtomicBool::new(true));
@@ -46,7 +88,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             update_tray_tooltip,
             set_tray_visible,
-            set_close_to_tray
+            set_close_to_tray,
+            save_and_open_ics
         ])
         .setup(move |app| {
             // Build Tray Context Menu

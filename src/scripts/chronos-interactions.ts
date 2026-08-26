@@ -1734,7 +1734,7 @@ export function initChronosDesktop() {
   }
 
   // Apple Calendar & .ICS Export
-  function triggerIcsDownload(e?: Event) {
+  async function triggerIcsDownload(openInCalendar: boolean = false, e?: Event) {
     if (e) e.stopPropagation();
     const ws = getActiveWorkspace();
     const startH = Math.floor(focusHour);
@@ -1773,27 +1773,74 @@ export function initChronosDesktop() {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    // 1. Copy ics file content / invite to clipboard
+    const filename = `team-sync-${ws.id || 'workspace'}.ics`;
+
+    // 1. If in Tauri Desktop App: Call native Rust save_and_open_ics command
+    let tauriSuccess = false;
+    try {
+      const tauri = (window as any).__TAURI__;
+      if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
+        await tauri.core.invoke('save_and_open_ics', {
+          filename,
+          content: icsContent,
+          openInCalendar,
+        });
+        tauriSuccess = true;
+      }
+    } catch (err) {
+      console.warn('Native ICS export fallback:', err);
+    }
+
+    // 2. Browser fallback (Data URI & Blob URL)
+    if (!tauriSuccess) {
+      if (openInCalendar) {
+        const dataUri = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+        window.location.href = dataUri;
+      } else {
+        try {
+          const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+        } catch (_) {}
+      }
+    }
+
+    // 3. Always copy invite text to clipboard
     copyToClipboard(icsContent);
 
-    // 2. Trigger native download
-    try {
-      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.setAttribute('download', `team-sync-${ws.id || 'workspace'}.ics`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
-    } catch (_) {}
+    // 4. Show brief visual feedback toast on calendar button
+    if (calendarSelectBtn) {
+      const label = calendarSelectBtn.querySelector('span');
+      if (label) {
+        const orig = label.textContent;
+        label.textContent = openInCalendar ? '✓ CALENDAR OPENED' : '✓ ICS DOWNLOADED';
+        setTimeout(() => {
+          if (label) label.textContent = orig;
+        }, 2000);
+      }
+    }
 
     closeCalendarDropdown();
   }
 
-  if (exportAppleBtn) exportAppleBtn.addEventListener('click', triggerIcsDownload);
-  if (exportIcsFileBtn) exportIcsFileBtn.addEventListener('click', triggerIcsDownload);
+  if (exportAppleBtn) {
+    exportAppleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerIcsDownload(true, e);
+    });
+  }
+  if (exportIcsFileBtn) {
+    exportIcsFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerIcsDownload(false, e);
+    });
+  }
 
   // Share Meeting Link & Formatted Participant Local Times
   if (shareBtn) {
