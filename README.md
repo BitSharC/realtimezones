@@ -115,7 +115,7 @@ If RealTimeZones helped you, consider leaving a ⭐ on the repository.
 
 <div align="center">
 
-### 👨‍💻 Built by Tushar Chib (BitSharC)
+### 👨‍💻 Built by BitSharC
 
 Making global collaboration a little easier, one meeting at a time.
 
