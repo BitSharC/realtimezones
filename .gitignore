@@ -34,3 +34,4 @@ Thumbs.db
 
 # tauri build output
 src-tauri/target/
+src-tauri/gen/schemas/

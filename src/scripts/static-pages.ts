@@ -1,4 +1,5 @@
 import { searchCities } from './city-db';
+import { escapeHtml } from './core/workspace-validator';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Theme Toggle Logic
@@ -320,15 +321,15 @@ document.addEventListener('DOMContentLoaded', () => {
         <button 
           type="button" 
           class="search-result-item w-full text-left px-4 py-3 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer" 
-          data-timezone="${city.timezone}" 
-          data-name="${city.name}"
+          data-timezone="${escapeHtml(city.timezone)}"
+          data-name="${escapeHtml(city.name)}"
           data-index="${idx}"
         >
           <div class="flex flex-col">
-            <span class="text-xs font-semibold text-zinc-900 dark:text-zinc-50">${city.name}</span>
-            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">${city.country} • ${city.timezone.split('/')[0]}</span>
+            <span class="text-xs font-semibold text-zinc-900 dark:text-zinc-50">${escapeHtml(city.name)}</span>
+            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">${escapeHtml(city.country)} • ${escapeHtml(city.timezone.split('/')[0])}</span>
           </div>
-          <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">${city.timezone.split('/').pop()?.replace('_', ' ')}</span>
+          <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">${escapeHtml(city.timezone.split('/').pop()?.replace('_', ' ') || '')}</span>
         </button>
       `).join('');
     }

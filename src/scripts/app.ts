@@ -1,16 +1,27 @@
 import { searchCities } from './city-db';
 import {
+  type DateParts,
+  parseDateOnly,
+  formatDateOnly,
+  formatDateLabel,
+  formatInvalidCivilTimeMessage,
+  getTodayDateParts,
+  datePartsToInstant,
+  addCalendarDays,
+  parseDateParamWithFallback,
   getTimezoneOffset,
   formatOffset,
   formatUtcOffset,
   getHourCategory,
   getParticipantStatusForMeeting,
-  calculateOverlap,
+  isInvalidCivilTimeError,
   generateGoogleCalendarUrl,
   generateOutlookCalendarUrl,
-  generateIcsContent
+  generateIcsContent,
+  sanitizeCalendarFilename
 } from './time-utils';
 import { cities, type City } from '../data/cities';
+import { escapeHtml } from './core/workspace-validator';
 
 // Country Name to ISO 3166-1 alpha-2 Code mapping for Cities
 const countryToIso: Record<string, string> = {
@@ -192,7 +203,7 @@ function getOverlapExplanation(
   };
   
   // Home timezone status
-  const homeStatus = getParticipantStatusForMeeting(homeTimezone, this.getSelectedDate(), startHour, durationMinutes);
+  const homeStatus = getParticipantStatusForMeeting(homeTimezone, this.getSelectedDate(), startHour, durationMinutes, homeTimezone);
   const homeLocalHour = getCityHourText(homeTimezone);
   if (homeStatus === 'working') {
     numWorking++;
@@ -206,7 +217,7 @@ function getOverlapExplanation(
 
   // Evaluate other cities
   uniqueCities.forEach(city => {
-    const status = getParticipantStatusForMeeting(city.timezone, this.getSelectedDate(), startHour, durationMinutes);
+    const status = getParticipantStatusForMeeting(city.timezone, this.getSelectedDate(), startHour, durationMinutes, homeTimezone);
     const localHour = getCityHourText(city.timezone);
     
     if (status === 'working') {
@@ -383,7 +394,7 @@ class RealTimeZonesApp {
   private selectedCities: City[] = [];
   private favoriteTimezones: Set<string> = new Set();
   private focusHour: number = new Date().getHours();
-  private selectedDate: Date = new Date();
+  private selectedDateParts: DateParts;
   private activeTheme: 'dark' | 'light' | 'system' = 'system';
   private meetingDurationMinutes: number = 60;
   public is24HourFormat: boolean = false;
@@ -432,12 +443,16 @@ class RealTimeZonesApp {
   private isDragging = false;
 
   constructor() {
-    this.homeTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    this.selectedDate.setHours(0, 0, 0, 0); // normalize date to start of day
+    this.homeTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    this.selectedDateParts = getTodayDateParts(this.homeTimezone);
   }
 
-  public getSelectedDate() {
-    return this.selectedDate;
+  public getSelectedDateParts(): DateParts {
+    return { ...this.selectedDateParts };
+  }
+
+  public getSelectedDate(): Date {
+    return datePartsToInstant(this.selectedDateParts, this.focusHour, 0, this.homeTimezone);
   }
 
   public init() {
@@ -543,16 +558,18 @@ class RealTimeZonesApp {
       this.selectedCities = [];
       for (const cityName of cityList) {
         const decoded = decodeURIComponent(cityName);
-        const match = cities.find((c: City) => c.name.toLowerCase() === decoded.toLowerCase() || c.timezone === decoded);
-        if (match && !this.selectedCities.some(existing => existing.timezone === match.timezone)) {
+        const match = cities.find((c: City) => c.id.toLowerCase() === decoded.toLowerCase() || c.name.toLowerCase() === decoded.toLowerCase() || c.timezone === decoded);
+        if (match && !this.selectedCities.some(existing => existing.id === match.id || (existing.name.toLowerCase() === match.name.toLowerCase() && existing.country.toLowerCase() === match.country.toLowerCase()))) {
           this.selectedCities.push(match);
         }
       }
     } else {
       this.selectedCities = [];
-      for (const tz of wsData.cities) {
-        const match = cities.find((c: City) => c.timezone === tz);
-        if (match) this.selectedCities.push(match);
+      for (const item of wsData.cities) {
+        const match = cities.find((c: City) => c.id === item || c.timezone === item || c.name === item);
+        if (match && !this.selectedCities.some(existing => existing.id === match.id)) {
+          this.selectedCities.push(match);
+        }
       }
     }
 
@@ -568,14 +585,9 @@ class RealTimeZonesApp {
 
     // Load Date: Priority is Shared URL -> Today -> Never an old saved date
     if (urlDate) {
-      const parsedDate = new Date(urlDate);
-      if (!isNaN(parsedDate.getTime())) {
-        this.selectedDate = parsedDate;
-        this.selectedDate.setHours(0, 0, 0, 0);
-      }
+      this.selectedDateParts = parseDateParamWithFallback(urlDate, this.homeTimezone);
     } else {
-      this.selectedDate = new Date();
-      this.selectedDate.setHours(0, 0, 0, 0);
+      this.selectedDateParts = getTodayDateParts(this.homeTimezone);
     }
 
     // Load Duration
@@ -661,7 +673,7 @@ class RealTimeZonesApp {
     const params = new URLSearchParams();
     params.set('cities', this.selectedCities.map(c => encodeURIComponent(c.name)).join(','));
     params.set('focus', this.focusHour.toString());
-    params.set('date', this.selectedDate.toISOString().split('T')[0]);
+    params.set('date', formatDateOnly(this.selectedDateParts));
     params.set('duration', this.meetingDurationMinutes.toString());
     params.set('format', this.is24HourFormat ? '24h' : '12h');
     window.history.replaceState(null, '', `?${params.toString()}`);
@@ -698,10 +710,12 @@ class RealTimeZonesApp {
       });
       this.datePickerInput.addEventListener('change', () => {
         if (this.datePickerInput.value) {
-          this.selectedDate = new Date(this.datePickerInput.value);
-          this.selectedDate.setHours(0, 0, 0, 0);
-          this.saveState();
-          this.render();
+          const parsed = parseDateOnly(this.datePickerInput.value);
+          if (parsed) {
+            this.selectedDateParts = parsed;
+            this.saveState();
+            this.render();
+          }
         }
       });
     }
@@ -1105,14 +1119,13 @@ class RealTimeZonesApp {
   }
 
   private adjustDate(days: number) {
-    this.selectedDate.setDate(this.selectedDate.getDate() + days);
+    this.selectedDateParts = addCalendarDays(this.selectedDateParts, days);
     this.saveState();
     this.render();
   }
 
   private resetToNow() {
-    this.selectedDate = new Date();
-    this.selectedDate.setHours(0, 0, 0, 0);
+    this.selectedDateParts = getTodayDateParts(this.homeTimezone);
     this.focusHour = new Date().getHours();
     this.focusScrubberInput.value = this.focusHour.toString();
     this.saveState();
@@ -1161,14 +1174,14 @@ class RealTimeZonesApp {
         // Show some recommended or popular tech cities that aren't already selected
         const popular = ["New York", "London", "Tokyo", "San Francisco", "Singapore", "Berlin"];
         const filtered = cities
-          .filter((c: City) => popular.includes(c.name) && !this.selectedCities.some(sc => sc.timezone === c.timezone))
+          .filter((c: City) => popular.includes(c.name) && !this.selectedCities.some(sc => sc.id === c.id))
           .slice(0, 5);
 
         this.renderSearchResults(filtered, true);
       } else {
         this.searchResults.innerHTML = `
           <div class="px-4 py-8 text-center text-zinc-400 dark:text-zinc-500 font-mono text-sm">
-            No cities match "${query}"
+            No cities match "${escapeHtml(query)}"
           </div>
         `;
       }
@@ -1200,8 +1213,8 @@ class RealTimeZonesApp {
 
       btn.innerHTML = `
         <div class="flex flex-col">
-          <span class="font-medium text-zinc-900 dark:text-zinc-50">${city.name}</span>
-          <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono">${city.country} • ${city.timezone.split('/')[0]}</span>
+          <span class="font-medium text-zinc-900 dark:text-zinc-50">${escapeHtml(city.name)}</span>
+          <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono">${escapeHtml(city.country)} • ${escapeHtml(city.timezone.split('/')[0])}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded text-xs font-mono bg-zinc-200/50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">${relativeStr}</span>
@@ -1256,7 +1269,7 @@ class RealTimeZonesApp {
   }
 
   private addCity(city: City) {
-    if (!this.selectedCities.some(c => c.timezone === city.timezone)) {
+    if (!this.selectedCities.some(c => c.id === city.id || (c.name.toLowerCase() === city.name.toLowerCase() && c.country.toLowerCase() === city.country.toLowerCase()))) {
       this.selectedCities.push(city);
       this.saveState();
       this.render();
@@ -1271,8 +1284,8 @@ class RealTimeZonesApp {
     this.closeSearch();
   }
 
-  private removeCity(timezone: string) {
-    this.selectedCities = this.selectedCities.filter(c => c.timezone !== timezone);
+  private removeCity(cityId: string, timezone?: string) {
+    this.selectedCities = this.selectedCities.filter(c => c.id ? c.id !== cityId : c.timezone !== timezone);
     this.saveState();
     this.render();
   }
@@ -1480,9 +1493,18 @@ class RealTimeZonesApp {
       labelSpan.textContent = displayNames[type];
     }
 
-    // Calculate exact start date/time
-    const start = new Date(this.selectedDate);
-    start.setHours(this.focusHour, 0, 0, 0);
+    // Calculate exact start date/time. Invalid DST local times must not be exported.
+    let start: Date;
+    try {
+      start = datePartsToInstant(this.selectedDateParts, this.focusHour, 0, this.homeTimezone);
+    } catch (error) {
+      if (!isInvalidCivilTimeError(error)) {
+        throw error;
+      }
+      this.renderUnavailableMeetingWidget();
+      this.calendarDropdownMenu.classList.add('hidden');
+      return;
+    }
 
     const timezoneDisplay = this.selectedCities.map(c => `${c.name} (${new Intl.DateTimeFormat('en-US', { timeZone: c.timezone, hour: '2-digit', minute: '2-digit', hour12: !this.is24HourFormat }).format(start)})`).join('\n• ');
     
@@ -1503,7 +1525,7 @@ class RealTimeZonesApp {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `real-time-zones-meeting.ics`);
+      link.setAttribute('download', sanitizeCalendarFilename('real-time-zones-meeting.ics'));
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1611,17 +1633,28 @@ class RealTimeZonesApp {
       let numWorking = 0;
       let numBorder = 0;
       let numSleep = 0;
+      let invalidLocalTime = false;
 
       for (const tz of participantTimezones) {
-        const status = getParticipantStatusForMeeting(tz, this.selectedDate, h, this.meetingDurationMinutes);
-        if (status === 'working') {
-          numWorking++;
-        } else if (status === 'border') {
-          numBorder++;
-        } else {
-          numSleep++;
+        try {
+          const status = getParticipantStatusForMeeting(tz, this.selectedDateParts, h, this.meetingDurationMinutes, this.homeTimezone);
+          if (status === 'working') {
+            numWorking++;
+          } else if (status === 'border') {
+            numBorder++;
+          } else {
+            numSleep++;
+          }
+        } catch (error) {
+          if (!isInvalidCivilTimeError(error)) {
+            throw error;
+          }
+          invalidLocalTime = true;
+          break;
         }
       }
+
+      if (invalidLocalTime) continue;
 
       const score = (100 * numWorking + 60 * numBorder + (-20) * numSleep) / totalCities;
       results.push({ hour: h, score, numWorking });
@@ -1650,14 +1683,33 @@ class RealTimeZonesApp {
     return results.slice(0, 3);
   }
 
+  private renderUnavailableMeetingWidget() {
+    this.overlapWidget.innerHTML = `
+      <div class="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4" role="status">
+        <h4 class="text-xs font-mono text-amber-600 dark:text-amber-400 uppercase tracking-wider">Meeting time unavailable</h4>
+        <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-2">${formatInvalidCivilTimeMessage(this.selectedDateParts, this.focusHour, 0, this.homeTimezone)}</p>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Choose another start hour before sharing or exporting this meeting.</p>
+      </div>
+    `;
+  }
+
   // Renders the overlap slots recommendations
   private renderOverlapWidget() {
     const bestSlots = this.calculateBestTimes();
     
     this.overlapWidget.innerHTML = '';
     
-    const explanation = getOverlapExplanation.call(this, this.selectedCities, this.homeTimezone, this.focusHour, this.meetingDurationMinutes);
-    
+    let explanation: ReturnType<typeof getOverlapExplanation>;
+    try {
+      explanation = getOverlapExplanation.call(this, this.selectedCities, this.homeTimezone, this.focusHour, this.meetingDurationMinutes);
+    } catch (error) {
+      if (!isInvalidCivilTimeError(error)) {
+        throw error;
+      }
+      this.renderUnavailableMeetingWidget();
+      return;
+    }
+
     let starsStr = '';
     for (let i = 0; i < 5; i++) {
       starsStr += i < explanation.stars ? '★' : '☆';
@@ -1758,15 +1810,8 @@ class RealTimeZonesApp {
     if (!this.selectedDateLabel) return;
 
     // 1. Render Date UI labels
-    const showShortWeekday = window.innerWidth < 640;
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      weekday: showShortWeekday ? 'short' : 'long',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    this.selectedDateLabel.textContent = formatter.format(this.selectedDate);
-    this.datePickerInput.value = this.selectedDate.toISOString().split('T')[0];
+    this.selectedDateLabel.textContent = formatDateLabel(this.selectedDateParts);
+    this.datePickerInput.value = formatDateOnly(this.selectedDateParts);
 
     // 2. Render timelines hours header
     // Clean and rebuild
@@ -1797,10 +1842,12 @@ class RealTimeZonesApp {
 
     // ALWAYS display Pinned Home Row first
     this.renderRow({
+      id: "home",
       name: "Your Location",
       country: "Home",
       timezone: this.homeTimezone,
-      population: 0
+      population: 0,
+      flag: "📍"
     }, true);
 
     // Render other selected cities
@@ -1853,7 +1900,7 @@ class RealTimeZonesApp {
 
   private renderRow(city: City, isHome: boolean) {
     // Calculate offsets
-    const offsetMinutes = getTimezoneOffset(city.timezone, this.selectedDate);
+    const offsetMinutes = getTimezoneOffset(city.timezone, this.selectedDateParts);
 
     const row = document.createElement('div');
     row.className = 'flex w-[1312px] sm:w-[1408px] shrink-0 h-16 items-center timeline-row transition-colors duration-150 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/10';
@@ -1886,10 +1933,10 @@ class RealTimeZonesApp {
         }
         <div class="flex flex-col min-w-0">
           <div class="flex items-center gap-1 min-w-0">
-            <span class="text-xs sm:text-sm leading-none shrink-0" role="img" aria-label="${city.country} Flag">${getFlagEmoji(city.country, city.timezone)}</span>
-            <span class="font-medium text-xs sm:text-sm text-zinc-900 dark:text-zinc-50 truncate" title="${city.name}">${city.name}</span>
+            <span class="text-xs sm:text-sm leading-none shrink-0" role="img" aria-label="${escapeHtml(city.country)} Flag">${escapeHtml(getFlagEmoji(city.country, city.timezone))}</span>
+            <span class="font-medium text-xs sm:text-sm text-zinc-900 dark:text-zinc-50 truncate" title="${escapeHtml(city.name)}">${escapeHtml(city.name)}</span>
           </div>
-          <span class="hidden sm:block text-[11px] text-zinc-400 dark:text-zinc-500 truncate font-mono">${city.country === 'Home' ? 'Your Location' : city.country}</span>
+          <span class="hidden sm:block text-[11px] text-zinc-400 dark:text-zinc-500 truncate font-mono">${escapeHtml(city.country === 'Home' ? 'Your Location' : city.country)}</span>
         </div>
       </div>
       <div class="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -1914,7 +1961,7 @@ class RealTimeZonesApp {
     if (removeBtn) {
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.removeCity(city.timezone);
+        this.removeCity(city.id, city.timezone);
       });
     }
 
@@ -1986,12 +2033,32 @@ class RealTimeZonesApp {
     const track = document.createElement('div');
     track.className = 'flex w-[1152px] shrink-0 timeline-hours-track relative select-none';
 
-    const baseHourDate = new Date(this.selectedDate);
-
     for (let h = 0; h < 24; h++) {
-      // Calculate local hour for this block
-      const dateAtHour = new Date(baseHourDate);
-      dateAtHour.setHours(h, 0, 0, 0);
+      // Calculate local hour for this block from the exact base-zone instant.
+      let dateAtHour: Date;
+      try {
+        dateAtHour = datePartsToInstant(this.selectedDateParts, h, 0, this.homeTimezone);
+      } catch (error) {
+        if (!isInvalidCivilTimeError(error)) {
+          throw error;
+        }
+
+        const unavailableBlock = document.createElement('div');
+        unavailableBlock.className = 'hour-block w-12 h-16 flex flex-col items-center justify-center font-mono border-r border-b border-zinc-200/50 dark:border-zinc-800/30 text-xs shrink-0 cursor-not-allowed bg-zinc-200/40 dark:bg-zinc-800/40 text-zinc-400 dark:text-zinc-600';
+        unavailableBlock.setAttribute('data-hour-idx', h.toString());
+        unavailableBlock.setAttribute('data-city-name', city.name);
+        unavailableBlock.setAttribute('data-local-time', 'Unavailable');
+        unavailableBlock.setAttribute('data-category', 'unavailable');
+        unavailableBlock.setAttribute('data-offset', 'N/A');
+        unavailableBlock.setAttribute('data-weekday', 'Unavailable');
+        unavailableBlock.setAttribute('aria-label', `${h.toString().padStart(2, '0')}:00 unavailable because of a daylight-saving transition`);
+        unavailableBlock.innerHTML = `
+          <span class="font-bold">—</span>
+          <span class="text-[9px] tracking-tighter opacity-60 mt-0.5">DST</span>
+        `;
+        track.appendChild(unavailableBlock);
+        continue;
+      }
 
       const offset = getTimezoneOffset(city.timezone, dateAtHour);
       const localTime = new Date(dateAtHour.getTime() + offset * 60000);
@@ -2103,6 +2170,9 @@ class RealTimeZonesApp {
     } else if (category === 'sleep') {
       categoryLabel = 'Sleep Hours';
       bulletClass = 'bg-red-500';
+    } else if (category === 'unavailable') {
+      categoryLabel = 'Unavailable DST Time';
+      bulletClass = 'bg-zinc-500';
     }
 
     this.tooltipEl.innerHTML = `

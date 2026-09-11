@@ -21,9 +21,9 @@ export function searchCities(query: string, maxResults = 8): SearchResult[] {
     let score = 0;
 
     // 1. Exact matches (highest priority)
-    if (cityName === cleanQuery) {
+    if (cityName === cleanQuery || city.id.toLowerCase() === cleanQuery) {
       score += 1000;
-    } else if (cityName.startsWith(cleanQuery)) {
+    } else if (cityName.startsWith(cleanQuery) || city.id.toLowerCase().startsWith(cleanQuery)) {
       // 2. Starts with query
       score += 500;
     } else {

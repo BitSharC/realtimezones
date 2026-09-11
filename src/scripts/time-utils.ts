@@ -1,70 +1,78 @@
+import {
+  type DateParts,
+  InvalidCivilTimeError,
+  isInvalidCivilTimeError,
+  dateToDatePartsInTimezone,
+  parseDateOnly,
+  formatDateOnly,
+  isValidDateOnly,
+  addCalendarDays,
+  formatDateLabel,
+  formatInvalidCivilTimeMessage,
+  getTodayDateParts,
+  datePartsToInstant,
+  serializeDateParam,
+  parseDateParamWithFallback
+} from './core/date-only.ts';
+
+import {
+  isValidIanaTimezone,
+  getTimezoneOffsetMinutes,
+  getRelativeOffsetHours,
+  getLocalTimeForDateParts,
+  formatOffset,
+  formatUtcOffset
+} from './core/timezone-engine.ts';
+
+import {
+  type ParticipantWorkHours,
+  type MeetingSlotInput,
+  type ParticipantSlotRating,
+  type EvaluatedSlot,
+  categorizeLocalMinute,
+  getIntervalParticipantStatus,
+  evaluateMeetingSlot,
+  calculateBestMeetingSlots
+} from './core/meeting-intelligence.ts';
+
 /**
- * Calculate timezone offset in minutes for a specific IANA timezone at a given Date.
+ * Calculate timezone offset in minutes for a specific IANA timezone at a given Date or DateParts.
  * Handles Daylight Saving Time (DST) changes dynamically using browser Intl API.
  */
-export function getTimezoneOffset(timezone: string, date: Date = new Date()): number {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      second: 'numeric',
-      hour12: false
-    });
-    const parts = formatter.formatToParts(date);
-    const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
-    
-    const year = parseInt(partMap.year);
-    const month = parseInt(partMap.month) - 1;
-    const day = parseInt(partMap.day);
-    // Handle edge case of hour = 24 depending on locale
-    const rawHour = parseInt(partMap.hour);
-    const hour = rawHour === 24 ? 0 : rawHour;
-    const minute = parseInt(partMap.minute);
-    const second = parseInt(partMap.second);
-    
-    const localTimeAsUTC = Date.UTC(year, month, day, hour, minute, second);
-    const utcTime = Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      date.getUTCHours(),
-      date.getUTCMinutes(),
-      date.getUTCSeconds()
-    );
-    
-    return Math.round((localTimeAsUTC - utcTime) / 60000);
-  } catch (e) {
-    console.error(`Error calculating offset for ${timezone}:`, e);
-    // Fallback to local system offset if formatting fails
-    return -date.getTimezoneOffset();
-  }
+export function getTimezoneOffset(timezone: string, date: Date | DateParts = new Date()): number {
+  return getTimezoneOffsetMinutes(timezone, date);
 }
 
-/**
- * Returns formatted offset label e.g., "+05:30" or "-08:00"
- */
-export function formatOffset(offsetMinutes: number): string {
-  const absOffset = Math.abs(offsetMinutes);
-  const hours = Math.floor(absOffset / 60);
-  const minutes = absOffset % 60;
-  const sign = offsetMinutes >= 0 ? '+' : '-';
-  return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-/**
- * Returns formatted offset label e.g., "UTC+05:30" or "UTC−08:00" using mathematical minus character "−"
- */
-export function formatUtcOffset(offsetMinutes: number): string {
-  const absOffset = Math.abs(offsetMinutes);
-  const hours = Math.floor(absOffset / 60);
-  const minutes = absOffset % 60;
-  const sign = offsetMinutes >= 0 ? '+' : '−'; // unicode mathematical minus
-  return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
+export {
+  formatOffset,
+  formatUtcOffset,
+  type DateParts,
+  InvalidCivilTimeError,
+  isInvalidCivilTimeError,
+  parseDateOnly,
+  formatDateOnly,
+  isValidDateOnly,
+  addCalendarDays,
+  formatDateLabel,
+  formatInvalidCivilTimeMessage,
+  getTodayDateParts,
+  datePartsToInstant,
+  dateToDatePartsInTimezone,
+  serializeDateParam,
+  parseDateParamWithFallback,
+  isValidIanaTimezone,
+  getTimezoneOffsetMinutes,
+  getRelativeOffsetHours,
+  getLocalTimeForDateParts,
+  type ParticipantWorkHours,
+  type MeetingSlotInput,
+  type ParticipantSlotRating,
+  type EvaluatedSlot,
+  categorizeLocalMinute,
+  getIntervalParticipantStatus,
+  evaluateMeetingSlot,
+  calculateBestMeetingSlots
+};
 
 /**
  * Get category of standard working hours:
@@ -83,16 +91,19 @@ export function getHourCategory(hour: number): 'working' | 'border' | 'sleep' {
  */
 export function getParticipantStatusForMeeting(
   timezone: string,
-  selectedDate: Date,
+  selectedDate: Date | DateParts,
   startHour: number,
-  durationMinutes: number
+  durationMinutes: number,
+  baseTimezone: string
 ): 'working' | 'border' | 'sleep' {
-  const start = new Date(selectedDate);
-  start.setHours(startHour, 0, 0, 0);
-  const offset = getTimezoneOffset(timezone, start);
-  const localTime = new Date(start.getTime() + offset * 60000);
-  const localHour = localTime.getUTCHours();
-  return getHourCategory(localHour);
+  const dateParts = 'year' in selectedDate ? selectedDate : dateToDatePartsInTimezone(selectedDate, baseTimezone);
+  return getIntervalParticipantStatus(
+    timezone,
+    baseTimezone,
+    dateParts,
+    startHour * 60,
+    durationMinutes
+  );
 }
 
 export interface OverlapSlot {
@@ -106,26 +117,27 @@ export interface OverlapSlot {
  * Returns an array of slot details sorted by score (highest to lowest compatibility).
  */
 export function calculateOverlap(
-  selectedDate: Date,
+  selectedDate: Date | DateParts,
   homeTimezone: string,
   cityTimezones: string[],
   durationMinutes: number = 60
 ): OverlapSlot[] {
   const slots: OverlapSlot[] = [];
-  const baseDate = new Date(selectedDate);
-  
+  const dateParts = 'year' in selectedDate ? selectedDate : dateToDatePartsInTimezone(selectedDate, homeTimezone);
+  const allTzs = Array.from(new Set([homeTimezone, ...cityTimezones]));
+
   for (let h = 0; h < 24; h++) {
     const ratings: Record<string, 'working' | 'border' | 'sleep'> = {};
     let totalScore = 0;
 
-    // Evaluate home zone status for the duration
-    const homeStatus = getParticipantStatusForMeeting(homeTimezone, baseDate, h, durationMinutes);
-    ratings[homeTimezone] = homeStatus;
-    totalScore += homeStatus === 'working' ? 10 : homeStatus === 'border' ? 4 : -10;
-
-    // Evaluate other zones
-    for (const tz of cityTimezones) {
-      const status = getParticipantStatusForMeeting(tz, baseDate, h, durationMinutes);
+    for (const tz of allTzs) {
+      const status: ParticipantSlotRating = getIntervalParticipantStatus(
+        tz,
+        homeTimezone,
+        dateParts,
+        h * 60,
+        durationMinutes
+      );
       ratings[tz] = status;
       totalScore += status === 'working' ? 10 : status === 'border' ? 4 : -10;
     }
@@ -225,3 +237,5 @@ export function generateIcsContent(details: CalendarDetails): string {
     'END:VCALENDAR'
   ].join('\r\n');
 }
+
+export { sanitizeCalendarFilename } from './core/calendar-filename.ts';

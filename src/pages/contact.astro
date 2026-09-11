@@ -36,81 +36,118 @@ const canonicalUrl = "https://realtimezones.com/contact";
       <!-- Contact Form Container -->
       <section class="w-full max-w-xl mx-auto">
         
-        <!-- Submission Success State (Hidden by default) -->
-        <div 
-          id="success-banner" 
-          class="hidden bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-6 rounded-xl flex flex-col gap-2 font-sans mb-8 animate-subtle"
+        <!-- Truthful Status Banner (Hidden by default) -->
+        <div
+          id="status-banner"
+          class="hidden bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 p-6 rounded-xl flex flex-col gap-3 font-sans mb-8 transition-all"
+          role="status"
+          aria-live="polite"
         >
-          <div class="flex items-center gap-2 font-semibold">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
+            <svg id="status-icon-check" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"/>
             </svg>
-            Message Sent Successfully
+            <span id="status-title">Draft opened in your email client.</span>
           </div>
-          <p class="text-sm text-emerald-700/80 dark:text-emerald-400/80">
-            Thank you for reaching out to us. We have received your message and our team will get back to you shortly.
+          <p id="status-description" class="text-sm text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
+            Your default email application was opened with a pre-filled draft. If your email app did not open, you can copy the message below.
           </p>
-          <button 
-            type="button" 
-            id="reset-form-btn" 
-            class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-800 mt-2 text-left cursor-pointer w-fit"
-          >
-            Send another message
-          </button>
+          <textarea
+            id="clipboard-fallback-text"
+            class="hidden w-full min-h-32 p-3 bg-white/70 dark:bg-zinc-950/40 border border-emerald-500/20 rounded-lg text-xs font-mono text-zinc-700 dark:text-zinc-300 resize-y"
+            readonly
+            aria-label="Message to copy manually"
+          ></textarea>
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="button"
+              id="status-copy-btn"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span>Copy Message to Clipboard</span>
+            </button>
+            <button
+              type="button"
+              id="status-edit-btn"
+              class="px-4 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 underline cursor-pointer"
+            >
+              Edit message
+            </button>
+          </div>
         </div>
 
         <!-- The Contact Form -->
-        <form id="contact-form" class="flex flex-col gap-6 font-sans">
+        <form id="contact-form" class="flex flex-col gap-6 font-sans" novalidate>
           
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-1.5">
             <label for="contact-name" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
               Full Name
             </label>
-            <input 
-              type="text" 
-              id="contact-name" 
-              name="name" 
-              required
-              placeholder="Name" 
+            <input
+              type="text"
+              id="contact-name"
+              name="name"
+              placeholder="Your name"
+              aria-describedby="contact-name-error"
               class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
             />
+            <p id="contact-name-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
           </div>
 
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-1.5">
             <label for="contact-email" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
               Email Address
             </label>
-            <input 
-              type="email" 
-              id="contact-email" 
-              name="email" 
-              required
-              placeholder="name@company.com" 
+            <input
+              type="email"
+              id="contact-email"
+              name="email"
+              placeholder="name@company.com"
+              aria-describedby="contact-email-error"
               class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
             />
+            <p id="contact-email-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
           </div>
 
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-1.5">
             <label for="contact-message" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
               Message
             </label>
-            <textarea 
-              id="contact-message" 
-              name="message" 
-              rows="6" 
-              required
-              placeholder="How can we help you coordinate your timezone sync?" 
+            <textarea
+              id="contact-message"
+              name="message"
+              rows="6"
+              placeholder="How can we help you coordinate your timezone sync?"
+              aria-describedby="contact-message-error"
               class="w-full py-2.5 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all resize-y min-h-[120px]"
             ></textarea>
+            <p id="contact-message-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
           </div>
 
-          <!-- Submit Button -->
-          <button 
-            type="submit" 
-            class="w-full sm:w-fit px-8 py-2.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-full shadow-xs transition-all duration-150 cursor-pointer text-center"
-          >
-            Send Message
-          </button>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+            Submitting opens a draft in your local email client addressed to <a href="mailto:bitsharc.dev@gmail.com" class="underline hover:text-zinc-800 dark:hover:text-zinc-200">bitsharc.dev@gmail.com</a>. You can also copy the formatted message directly.
+          </p>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              type="submit"
+              id="submit-btn"
+              class="px-6 py-2.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-full shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              <span>Open in Email App</span>
+            </button>
+            <button
+              type="button"
+              id="form-copy-btn"
+              class="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 font-medium text-sm rounded-full border border-zinc-200 dark:border-zinc-800 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <span id="form-copy-text">Copy Message</span>
+            </button>
+          </div>
           
         </form>
       </section>
@@ -175,34 +212,218 @@ const canonicalUrl = "https://realtimezones.com/contact";
 <script src="../scripts/static-pages.ts"></script>
 
 <script>
-  // Client-side Contact Form handling
-  const contactForm = document.getElementById('contact-form') as HTMLFormElement | null;
-  const successBanner = document.getElementById('success-banner') as HTMLDivElement | null;
-  const resetFormBtn = document.getElementById('reset-form-btn') as HTMLButtonElement | null;
+  import {
+    validateContactForm,
+    buildContactMailtoUrl,
+    buildContactClipboardText,
+    CONTACT_STATUS_MESSAGES,
+    DEFAULT_CONTACT_EMAIL,
+    getClipboardStatusMessage
+  } from '../scripts/core/contact-form.ts';
 
-  if (contactForm && successBanner) {
-    contactForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      // Get form data to verify inputs are correct
-      const formData = new FormData(contactForm);
-      const name = formData.get('name');
-      const email = formData.get('email');
-      const message = formData.get('message');
-      
-      if (name && email && message) {
-        // Toggle view states
-        contactForm.classList.add('hidden');
-        successBanner.classList.remove('hidden');
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
+  const nameInput = document.getElementById('contact-name') as HTMLInputElement | null;
+  const emailInput = document.getElementById('contact-email') as HTMLInputElement | null;
+  const messageInput = document.getElementById('contact-message') as HTMLTextAreaElement | null;
+
+  const nameError = document.getElementById('contact-name-error') as HTMLParagraphElement | null;
+  const emailError = document.getElementById('contact-email-error') as HTMLParagraphElement | null;
+  const messageError = document.getElementById('contact-message-error') as HTMLParagraphElement | null;
+
+  const statusBanner = document.getElementById('status-banner') as HTMLDivElement | null;
+  const statusTitle = document.getElementById('status-title') as HTMLSpanElement | null;
+  const statusDescription = document.getElementById('status-description') as HTMLParagraphElement | null;
+  const clipboardFallbackText = document.getElementById('clipboard-fallback-text') as HTMLTextAreaElement | null;
+  const statusCopyBtn = document.getElementById('status-copy-btn') as HTMLButtonElement | null;
+  const statusEditBtn = document.getElementById('status-edit-btn') as HTMLButtonElement | null;
+  const formCopyBtn = document.getElementById('form-copy-btn') as HTMLButtonElement | null;
+
+  let lastCleanedData: { name: string; email: string; message: string } | null = null;
+
+  function clearErrors() {
+    [nameError, emailError, messageError].forEach((el) => {
+      if (el) {
+        el.textContent = '';
+        el.classList.add('hidden');
       }
     });
+    [nameInput, emailInput, messageInput].forEach((el) => {
+      if (el) {
+        el.classList.remove('border-rose-500', 'focus:ring-rose-500', 'focus:border-rose-500');
+        el.classList.add('border-zinc-200', 'dark:border-zinc-800');
+      }
+    });
+  }
 
-    if (resetFormBtn) {
-      resetFormBtn.addEventListener('click', () => {
-        // Reset form controls
-        contactForm.reset();
-        contactForm.classList.remove('hidden');
-        successBanner.classList.add('hidden');
+  function showErrors(errors: { name?: string; email?: string; message?: string }) {
+    if (errors.name && nameError && nameInput) {
+      nameError.textContent = errors.name;
+      nameError.classList.remove('hidden');
+      nameInput.classList.remove('border-zinc-200', 'dark:border-zinc-800');
+      nameInput.classList.add('border-rose-500', 'focus:ring-rose-500', 'focus:border-rose-500');
+    }
+    if (errors.email && emailError && emailInput) {
+      emailError.textContent = errors.email;
+      emailError.classList.remove('hidden');
+      emailInput.classList.remove('border-zinc-200', 'dark:border-zinc-800');
+      emailInput.classList.add('border-rose-500', 'focus:ring-rose-500', 'focus:border-rose-500');
+    }
+    if (errors.message && messageError && messageInput) {
+      messageError.textContent = errors.message;
+      messageError.classList.remove('hidden');
+      messageInput.classList.remove('border-zinc-200', 'dark:border-zinc-800');
+      messageInput.classList.add('border-rose-500', 'focus:ring-rose-500', 'focus:border-rose-500');
+    }
+
+    if (errors.name && nameInput) nameInput.focus();
+    else if (errors.email && emailInput) emailInput.focus();
+    else if (errors.message && messageInput) messageInput.focus();
+  }
+
+  [nameInput, emailInput, messageInput].forEach((input) => {
+    input?.addEventListener('input', () => {
+      clearErrors();
+    });
+  });
+
+  async function copyToClipboard(text: string): Promise<boolean> {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {}
+    }
+
+    let textarea: HTMLTextAreaElement | null = null;
+    try {
+      textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      return document.execCommand('copy');
+    } catch (_) {
+      return false;
+    } finally {
+      textarea?.remove();
+    }
+  }
+
+  function getFormData() {
+    return {
+      name: nameInput?.value ?? '',
+      email: emailInput?.value ?? '',
+      message: messageInput?.value ?? ''
+    };
+  }
+
+  function showClipboardResult(copied: boolean, text: string, hideFormOnSuccess: boolean) {
+    if (statusTitle) statusTitle.textContent = getClipboardStatusMessage(copied);
+    if (statusDescription) {
+      statusDescription.textContent = copied
+        ? `Your message has been copied to your clipboard. You can paste it into any email client and send it to ${DEFAULT_CONTACT_EMAIL}.`
+        : `Automatic copying failed. Select the message below, copy it manually, and email it to ${DEFAULT_CONTACT_EMAIL}.`;
+    }
+    if (clipboardFallbackText) {
+      clipboardFallbackText.value = text;
+      clipboardFallbackText.classList.toggle('hidden', copied);
+    }
+    if (form) form.classList.toggle('hidden', copied && hideFormOnSuccess);
+    if (statusBanner) statusBanner.classList.remove('hidden');
+  }
+
+  if (form && statusBanner) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const data = getFormData();
+      const validation = validateContactForm(data);
+
+      if (!validation.isValid || !validation.cleanedData) {
+        showErrors(validation.errors);
+        return;
+      }
+
+      lastCleanedData = validation.cleanedData;
+      const mailtoUrl = buildContactMailtoUrl(validation.cleanedData);
+      const clipboardText = buildContactClipboardText(validation.cleanedData);
+
+      let openSuccess = false;
+      try {
+        window.location.href = mailtoUrl;
+        openSuccess = true;
+      } catch {
+        openSuccess = false;
+      }
+
+      if (openSuccess) {
+        if (statusTitle) statusTitle.textContent = CONTACT_STATUS_MESSAGES.draftOpened;
+        if (statusDescription) {
+          statusDescription.textContent =
+            `We opened your default email application with a pre-filled draft addressed to ${DEFAULT_CONTACT_EMAIL}. If your email app did not open, you can copy the message below.`;
+        }
+      } else {
+        if (statusTitle) statusTitle.textContent = CONTACT_STATUS_MESSAGES.clientFailedCopyFallback;
+        if (statusDescription) {
+          statusDescription.textContent =
+            `Could not trigger your local email client. You can copy the message below and email it directly to ${DEFAULT_CONTACT_EMAIL}.`;
+        }
+      }
+
+      if (clipboardFallbackText) {
+        clipboardFallbackText.value = clipboardText;
+        clipboardFallbackText.classList.toggle('hidden', openSuccess);
+      }
+      form.classList.add('hidden');
+      statusBanner.classList.remove('hidden');
+    });
+
+    if (formCopyBtn) {
+      formCopyBtn.addEventListener('click', async () => {
+        clearErrors();
+        const data = getFormData();
+        const validation = validateContactForm(data);
+
+        if (!validation.isValid || !validation.cleanedData) {
+          showErrors(validation.errors);
+          return;
+        }
+
+        lastCleanedData = validation.cleanedData;
+        const clipText = buildContactClipboardText(validation.cleanedData);
+        const copied = await copyToClipboard(clipText);
+        showClipboardResult(copied, clipText, true);
+      });
+    }
+
+    if (statusCopyBtn) {
+      statusCopyBtn.addEventListener('click', async () => {
+        if (!lastCleanedData) return;
+        const clipText = buildContactClipboardText(lastCleanedData);
+        const ok = await copyToClipboard(clipText);
+        if (ok) {
+          showClipboardResult(true, clipText, false);
+          const span = statusCopyBtn.querySelector('span');
+          if (span) {
+            const originalText = span.textContent || 'Copy Message to Clipboard';
+            span.textContent = '✓ Copied to Clipboard';
+            setTimeout(() => {
+              if (span) span.textContent = originalText;
+            }, 2000);
+          }
+        } else {
+          showClipboardResult(false, clipText, false);
+        }
+      });
+    }
+
+    if (statusEditBtn) {
+      statusEditBtn.addEventListener('click', () => {
+        form.classList.remove('hidden');
+        statusBanner.classList.add('hidden');
+        clipboardFallbackText?.classList.add('hidden');
       });
     }
   }

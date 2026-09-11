@@ -1,5 +1,34 @@
 // Chronos Desktop Prototype - Unified Raycast Quick Action Launcher, Workspaces Management, Meeting Quality & Export Engine
 
+import {
+  type DateParts,
+  getTodayDateParts,
+  datePartsToInstant,
+  addCalendarDays,
+  isInvalidCivilTimeError
+} from './core/date-only.ts';
+import {
+  getTimezoneOffsetMinutes,
+  getRelativeOffsetHours as getCoreRelativeOffsetHours,
+  getLocalTimeForDateParts
+} from './core/timezone-engine.ts';
+import {
+  type ParticipantWorkHours,
+  calculateBestMeetingSlots,
+  evaluateMeetingSlot
+} from './core/meeting-intelligence.ts';
+import {
+  getCanonicalCities,
+  toChronosCityTime
+} from './core/city-registry.ts';
+import {
+  escapeHtml,
+  parseAndValidateWorkspaceJson
+} from './core/workspace-validator.ts';
+import {
+  sanitizeCalendarFilename
+} from './core/calendar-filename.ts';
+
 export interface CityTime {
   id: string;
   name: string;
@@ -18,134 +47,10 @@ export interface Workspace {
   cities: CityTime[];
 }
 
-// 110+ Comprehensive Global Cities Dataset across all 7 Continents
-export const POPULAR_AVAILABLE_CITIES: CityTime[] = [
-  // Europe & UK
-  { id: 'lon', name: 'London', country: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', offsetHours: 0, badge: 'Base', statusLabel: 'BST, GMT+1', isBase: true },
-  { id: 'man', name: 'Manchester', country: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', offsetHours: 0, badge: '+0h', statusLabel: 'BST, GMT+1' },
-  { id: 'edi', name: 'Edinburgh', country: 'United Kingdom', flag: '🇬🇧', timezone: 'Europe/London', offsetHours: 0, badge: '+0h', statusLabel: 'BST, GMT+1' },
-  { id: 'dub', name: 'Dublin', country: 'Ireland', flag: '🇮🇪', timezone: 'Europe/Dublin', offsetHours: 0, badge: '+0h', statusLabel: 'IST, GMT+1' },
-  { id: 'par', name: 'Paris', country: 'France', flag: '🇫🇷', timezone: 'Europe/Paris', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'lyo', name: 'Lyon', country: 'France', flag: '🇫🇷', timezone: 'Europe/Paris', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'ber', name: 'Berlin', country: 'Germany', flag: '🇩🇪', timezone: 'Europe/Berlin', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'muc', name: 'Munich', country: 'Germany', flag: '🇩🇪', timezone: 'Europe/Berlin', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'fra', name: 'Frankfurt', country: 'Germany', flag: '🇩🇪', timezone: 'Europe/Berlin', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'ams', name: 'Amsterdam', country: 'Netherlands', flag: '🇳🇱', timezone: 'Europe/Amsterdam', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'bru', name: 'Brussels', country: 'Belgium', flag: '🇧🇪', timezone: 'Europe/Brussels', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'zrh', name: 'Zurich', country: 'Switzerland', flag: '🇨🇭', timezone: 'Europe/Zurich', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'gva', name: 'Geneva', country: 'Switzerland', flag: '🇨🇭', timezone: 'Europe/Zurich', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'vie', name: 'Vienna', country: 'Austria', flag: '🇦🇹', timezone: 'Europe/Vienna', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'mad', name: 'Madrid', country: 'Spain', flag: '🇪🇸', timezone: 'Europe/Madrid', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'bcn', name: 'Barcelona', country: 'Spain', flag: '🇪🇸', timezone: 'Europe/Madrid', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'lis', name: 'Lisbon', country: 'Portugal', flag: '🇵🇹', timezone: 'Europe/Lisbon', offsetHours: 0, badge: '+0h', statusLabel: 'WEST, GMT+1' },
-  { id: 'rom', name: 'Rome', country: 'Italy', flag: '🇮🇹', timezone: 'Europe/Rome', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'mil', name: 'Milan', country: 'Italy', flag: '🇮🇹', timezone: 'Europe/Rome', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'sto', name: 'Stockholm', country: 'Sweden', flag: '🇸🇪', timezone: 'Europe/Stockholm', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'osl', name: 'Oslo', country: 'Norway', flag: '🇳🇴', timezone: 'Europe/Oslo', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'cph', name: 'Copenhagen', country: 'Denmark', flag: '🇩🇰', timezone: 'Europe/Copenhagen', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'hel', name: 'Helsinki', country: 'Finland', flag: '🇫🇮', timezone: 'Europe/Helsinki', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-  { id: 'waw', name: 'Warsaw', country: 'Poland', flag: '🇵🇱', timezone: 'Europe/Warsaw', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'prg', name: 'Prague', country: 'Czech Republic', flag: '🇨🇿', timezone: 'Europe/Prague', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'bud', name: 'Budapest', country: 'Hungary', flag: '🇭🇺', timezone: 'Europe/Budapest', offsetHours: 1, badge: '+1h', statusLabel: 'CEST, GMT+2' },
-  { id: 'ath', name: 'Athens', country: 'Greece', flag: '🇬🇷', timezone: 'Europe/Athens', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-  { id: 'ist', name: 'Istanbul', country: 'Turkey', flag: '🇹🇷', timezone: 'Europe/Istanbul', offsetHours: 2, badge: '+2h', statusLabel: 'TRT, GMT+3' },
-  { id: 'kyv', name: 'Kyiv', country: 'Ukraine', flag: '🇺🇦', timezone: 'Europe/Kyiv', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-  { id: 'mow', name: 'Moscow', country: 'Russia', flag: '🇷🇺', timezone: 'Europe/Moscow', offsetHours: 2, badge: '+2h', statusLabel: 'MSK, GMT+3' },
-
-  // Americas (North, Central & South)
-  { id: 'nyc', name: 'New York', country: 'United States', flag: '🇺🇸', timezone: 'America/New_York', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'bos', name: 'Boston', country: 'United States', flag: '🇺🇸', timezone: 'America/New_York', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'was', name: 'Washington D.C.', country: 'United States', flag: '🇺🇸', timezone: 'America/New_York', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'mia', name: 'Miami', country: 'United States', flag: '🇺🇸', timezone: 'America/New_York', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'atl', name: 'Atlanta', country: 'United States', flag: '🇺🇸', timezone: 'America/New_York', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'chi', name: 'Chicago', country: 'United States', flag: '🇺🇸', timezone: 'America/Chicago', offsetHours: -6, badge: '-6h', statusLabel: 'CDT, GMT-5' },
-  { id: 'atx', name: 'Austin', country: 'United States', flag: '🇺🇸', timezone: 'America/Chicago', offsetHours: -6, badge: '-6h', statusLabel: 'CDT, GMT-5' },
-  { id: 'dal', name: 'Dallas', country: 'United States', flag: '🇺🇸', timezone: 'America/Chicago', offsetHours: -6, badge: '-6h', statusLabel: 'CDT, GMT-5' },
-  { id: 'hou', name: 'Houston', country: 'United States', flag: '🇺🇸', timezone: 'America/Chicago', offsetHours: -6, badge: '-6h', statusLabel: 'CDT, GMT-5' },
-  { id: 'den', name: 'Denver', country: 'United States', flag: '🇺🇸', timezone: 'America/Denver', offsetHours: -7, badge: '-7h', statusLabel: 'MDT, GMT-6' },
-  { id: 'phx', name: 'Phoenix', country: 'United States', flag: '🇺🇸', timezone: 'America/Phoenix', offsetHours: -8, badge: '-8h', statusLabel: 'MST, GMT-7' },
-  { id: 'sfo', name: 'San Francisco', country: 'United States', flag: '🇺🇸', timezone: 'America/Los_Angeles', offsetHours: -8, badge: '-8h', statusLabel: 'PDT, GMT-7' },
-  { id: 'lax', name: 'Los Angeles', country: 'United States', flag: '🇺🇸', timezone: 'America/Los_Angeles', offsetHours: -8, badge: '-8h', statusLabel: 'PDT, GMT-7' },
-  { id: 'sea', name: 'Seattle', country: 'United States', flag: '🇺🇸', timezone: 'America/Los_Angeles', offsetHours: -8, badge: '-8h', statusLabel: 'PDT, GMT-7' },
-  { id: 'pdx', name: 'Portland', country: 'United States', flag: '🇺🇸', timezone: 'America/Los_Angeles', offsetHours: -8, badge: '-8h', statusLabel: 'PDT, GMT-7' },
-  { id: 'anc', name: 'Anchorage', country: 'United States', flag: '🇺🇸', timezone: 'America/Anchorage', offsetHours: -9, badge: '-9h', statusLabel: 'AKDT, GMT-8' },
-  { id: 'hnl', name: 'Honolulu', country: 'United States', flag: '🇺🇸', timezone: 'Pacific/Honolulu', offsetHours: -11, badge: '-11h', statusLabel: 'HST, GMT-10' },
-  { id: 'tor', name: 'Toronto', country: 'Canada', flag: '🇨🇦', timezone: 'America/Toronto', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'mtl', name: 'Montreal', country: 'Canada', flag: '🇨🇦', timezone: 'America/Toronto', offsetHours: -5, badge: '-5h', statusLabel: 'EDT, GMT-4' },
-  { id: 'van', name: 'Vancouver', country: 'Canada', flag: '🇨🇦', timezone: 'America/Vancouver', offsetHours: -8, badge: '-8h', statusLabel: 'PDT, GMT-7' },
-  { id: 'cal', name: 'Calgary', country: 'Canada', flag: '🇨🇦', timezone: 'America/Edmonton', offsetHours: -7, badge: '-7h', statusLabel: 'MDT, GMT-6' },
-  { id: 'mex', name: 'Mexico City', country: 'Mexico', flag: '🇲🇽', timezone: 'America/Mexico_City', offsetHours: -7, badge: '-7h', statusLabel: 'CST, GMT-6' },
-  { id: 'gdl', name: 'Guadalajara', country: 'Mexico', flag: '🇲🇽', timezone: 'America/Mexico_City', offsetHours: -7, badge: '-7h', statusLabel: 'CST, GMT-6' },
-  { id: 'bog', name: 'Bogotá', country: 'Colombia', flag: '🇨🇴', timezone: 'America/Bogota', offsetHours: -6, badge: '-6h', statusLabel: 'COT, GMT-5' },
-  { id: 'lim', name: 'Lima', country: 'Peru', flag: '🇵🇪', timezone: 'America/Lima', offsetHours: -6, badge: '-6h', statusLabel: 'PET, GMT-5' },
-  { id: 'scl', name: 'Santiago', country: 'Chile', flag: '🇨🇱', timezone: 'America/Santiago', offsetHours: -5, badge: '-5h', statusLabel: 'CLT, GMT-4' },
-  { id: 'bue', name: 'Buenos Aires', country: 'Argentina', flag: '🇦🇷', timezone: 'America/Argentina/Buenos_Aires', offsetHours: -4, badge: '-4h', statusLabel: 'ART, GMT-3' },
-  { id: 'sao', name: 'São Paulo', country: 'Brazil', flag: '🇧🇷', timezone: 'America/Sao_Paulo', offsetHours: -4, badge: '-4h', statusLabel: 'BRT, GMT-3' },
-  { id: 'rio', name: 'Rio de Janeiro', country: 'Brazil', flag: '🇧🇷', timezone: 'America/Sao_Paulo', offsetHours: -4, badge: '-4h', statusLabel: 'BRT, GMT-3' },
-
-  // Asia (South, East & Southeast)
-  { id: 'bom', name: 'Mumbai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'del', name: 'New Delhi', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'blr', name: 'Bengaluru', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'hyd', name: 'Hyderabad', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'maa', name: 'Chennai', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'pun', name: 'Pune', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'ccu', name: 'Kolkata', country: 'India', flag: '🇮🇳', timezone: 'Asia/Kolkata', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'khi', name: 'Karachi', country: 'Pakistan', flag: '🇵🇰', timezone: 'Asia/Karachi', offsetHours: 4, badge: '+4h', statusLabel: 'PKT, GMT+5' },
-  { id: 'lhe', name: 'Lahore', country: 'Pakistan', flag: '🇵🇰', timezone: 'Asia/Karachi', offsetHours: 4, badge: '+4h', statusLabel: 'PKT, GMT+5' },
-  { id: 'dac', name: 'Dhaka', country: 'Bangladesh', flag: '🇧🇩', timezone: 'Asia/Dhaka', offsetHours: 5, badge: '+5h', statusLabel: 'BST, GMT+6' },
-  { id: 'cmb', name: 'Colombo', country: 'Sri Lanka', flag: '🇱🇰', timezone: 'Asia/Colombo', offsetHours: 4.5, badge: '+4.5h', statusLabel: 'IST, GMT+5:30' },
-  { id: 'ktm', name: 'Kathmandu', country: 'Nepal', flag: '🇳🇵', timezone: 'Asia/Kathmandu', offsetHours: 4.75, badge: '+4.75h', statusLabel: 'NPT, GMT+5:45' },
-  { id: 'sin', name: 'Singapore', country: 'Singapore', flag: '🇸🇬', timezone: 'Asia/Singapore', offsetHours: 7, badge: '+7h', statusLabel: 'SGT, GMT+8' },
-  { id: 'kul', name: 'Kuala Lumpur', country: 'Malaysia', flag: '🇲🇾', timezone: 'Asia/Kuala_Lumpur', offsetHours: 7, badge: '+7h', statusLabel: 'MYT, GMT+8' },
-  { id: 'bkk', name: 'Bangkok', country: 'Thailand', flag: '🇹🇭', timezone: 'Asia/Bangkok', offsetHours: 6, badge: '+6h', statusLabel: 'ICT, GMT+7' },
-  { id: 'jkt', name: 'Jakarta', country: 'Indonesia', flag: '🇮🇩', timezone: 'Asia/Jakarta', offsetHours: 6, badge: '+6h', statusLabel: 'WIB, GMT+7' },
-  { id: 'dps', name: 'Bali', country: 'Indonesia', flag: '🇮🇩', timezone: 'Asia/Makassar', offsetHours: 7, badge: '+7h', statusLabel: 'WITA, GMT+8' },
-  { id: 'mnl', name: 'Manila', country: 'Philippines', flag: '🇵🇭', timezone: 'Asia/Manila', offsetHours: 7, badge: '+7h', statusLabel: 'PHT, GMT+8' },
-  { id: 'sgn', name: 'Ho Chi Minh City', country: 'Vietnam', flag: '🇻🇳', timezone: 'Asia/Ho_Chi_Minh', offsetHours: 6, badge: '+6h', statusLabel: 'ICT, GMT+7' },
-  { id: 'han', name: 'Hanoi', country: 'Vietnam', flag: '🇻🇳', timezone: 'Asia/Ho_Chi_Minh', offsetHours: 6, badge: '+6h', statusLabel: 'ICT, GMT+7' },
-  { id: 'hkg', name: 'Hong Kong', country: 'Hong Kong', flag: '🇭🇰', timezone: 'Asia/Hong_Kong', offsetHours: 7, badge: '+7h', statusLabel: 'HKT, GMT+8' },
-  { id: 'tpe', name: 'Taipei', country: 'Taiwan', flag: '🇹🇼', timezone: 'Asia/Taipei', offsetHours: 7, badge: '+7h', statusLabel: 'CST, GMT+8' },
-  { id: 'tyo', name: 'Tokyo', country: 'Japan', flag: '🇯🇵', timezone: 'Asia/Tokyo', offsetHours: 8, badge: '+8h', statusLabel: 'JST, GMT+9 (+1d)' },
-  { id: 'osa', name: 'Osaka', country: 'Japan', flag: '🇯🇵', timezone: 'Asia/Tokyo', offsetHours: 8, badge: '+8h', statusLabel: 'JST, GMT+9 (+1d)' },
-  { id: 'sel', name: 'Seoul', country: 'South Korea', flag: '🇰🇷', timezone: 'Asia/Seoul', offsetHours: 8, badge: '+8h', statusLabel: 'KST, GMT+9 (+1d)' },
-  { id: 'bjs', name: 'Beijing', country: 'China', flag: '🇨🇳', timezone: 'Asia/Shanghai', offsetHours: 7, badge: '+7h', statusLabel: 'CST, GMT+8' },
-  { id: 'sha', name: 'Shanghai', country: 'China', flag: '🇨🇳', timezone: 'Asia/Shanghai', offsetHours: 7, badge: '+7h', statusLabel: 'CST, GMT+8' },
-  { id: 'szx', name: 'Shenzhen', country: 'China', flag: '🇨🇳', timezone: 'Asia/Shanghai', offsetHours: 7, badge: '+7h', statusLabel: 'CST, GMT+8' },
-
-  // Middle East
-  { id: 'dxb', name: 'Dubai', country: 'UAE', flag: '🇦🇪', timezone: 'Asia/Dubai', offsetHours: 3, badge: '+3h', statusLabel: 'GST, GMT+4' },
-  { id: 'auh', name: 'Abu Dhabi', country: 'UAE', flag: '🇦🇪', timezone: 'Asia/Dubai', offsetHours: 3, badge: '+3h', statusLabel: 'GST, GMT+4' },
-  { id: 'doh', name: 'Doha', country: 'Qatar', flag: '🇶🇦', timezone: 'Asia/Qatar', offsetHours: 2, badge: '+2h', statusLabel: 'AST, GMT+3' },
-  { id: 'ruh', name: 'Riyadh', country: 'Saudi Arabia', flag: '🇸🇦', timezone: 'Asia/Riyadh', offsetHours: 2, badge: '+2h', statusLabel: 'AST, GMT+3' },
-  { id: 'jed', name: 'Jeddah', country: 'Saudi Arabia', flag: '🇸🇦', timezone: 'Asia/Riyadh', offsetHours: 2, badge: '+2h', statusLabel: 'AST, GMT+3' },
-  { id: 'kwi', name: 'Kuwait City', country: 'Kuwait', flag: '🇰🇼', timezone: 'Asia/Kuwait', offsetHours: 2, badge: '+2h', statusLabel: 'AST, GMT+3' },
-  { id: 'mct', name: 'Muscat', country: 'Oman', flag: '🇴🇲', timezone: 'Asia/Muscat', offsetHours: 3, badge: '+3h', statusLabel: 'GST, GMT+4' },
-  { id: 'tlv', name: 'Tel Aviv', country: 'Israel', flag: '🇮🇱', timezone: 'Asia/Jerusalem', offsetHours: 2, badge: '+2h', statusLabel: 'IDT, GMT+3' },
-  { id: 'bey', name: 'Beirut', country: 'Lebanon', flag: '🇱🇧', timezone: 'Asia/Beirut', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-  { id: 'amm', name: 'Amman', country: 'Jordan', flag: '🇯🇴', timezone: 'Asia/Amman', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-
-  // Australia & Oceania
-  { id: 'syd', name: 'Sydney', country: 'Australia', flag: '🇦🇺', timezone: 'Australia/Sydney', offsetHours: 9, badge: '+9h', statusLabel: 'AEST, GMT+10' },
-  { id: 'mel', name: 'Melbourne', country: 'Australia', flag: '🇦🇺', timezone: 'Australia/Melbourne', offsetHours: 9, badge: '+9h', statusLabel: 'AEST, GMT+10' },
-  { id: 'bne', name: 'Brisbane', country: 'Australia', flag: '🇦🇺', timezone: 'Australia/Brisbane', offsetHours: 9, badge: '+9h', statusLabel: 'AEST, GMT+10' },
-  { id: 'per', name: 'Perth', country: 'Australia', flag: '🇦🇺', timezone: 'Australia/Perth', offsetHours: 7, badge: '+7h', statusLabel: 'AWST, GMT+8' },
-  { id: 'adl', name: 'Adelaide', country: 'Australia', flag: '🇦🇺', timezone: 'Australia/Adelaide', offsetHours: 8.5, badge: '+8.5h', statusLabel: 'ACST, GMT+9:30' },
-  { id: 'akl', name: 'Auckland', country: 'New Zealand', flag: '🇳🇿', timezone: 'Pacific/Auckland', offsetHours: 11, badge: '+11h', statusLabel: 'NZST, GMT+12' },
-  { id: 'wlg', name: 'Wellington', country: 'New Zealand', flag: '🇳🇿', timezone: 'Pacific/Auckland', offsetHours: 11, badge: '+11h', statusLabel: 'NZST, GMT+12' },
-  { id: 'fji', name: 'Fiji', country: 'Fiji', flag: '🇫🇯', timezone: 'Pacific/Fiji', offsetHours: 11, badge: '+11h', statusLabel: 'FJT, GMT+12' },
-
-  // Africa
-  { id: 'cai', name: 'Cairo', country: 'Egypt', flag: '🇪🇬', timezone: 'Africa/Cairo', offsetHours: 2, badge: '+2h', statusLabel: 'EEST, GMT+3' },
-  { id: 'jnb', name: 'Johannesburg', country: 'South Africa', flag: '🇿🇦', timezone: 'Africa/Johannesburg', offsetHours: 1, badge: '+1h', statusLabel: 'SAST, GMT+2' },
-  { id: 'cpt', name: 'Cape Town', country: 'South Africa', flag: '🇿🇦', timezone: 'Africa/Johannesburg', offsetHours: 1, badge: '+1h', statusLabel: 'SAST, GMT+2' },
-  { id: 'nbo', name: 'Nairobi', country: 'Kenya', flag: '🇰🇪', timezone: 'Africa/Nairobi', offsetHours: 2, badge: '+2h', statusLabel: 'EAT, GMT+3' },
-  { id: 'los', name: 'Lagos', country: 'Nigeria', flag: '🇳🇬', timezone: 'Africa/Lagos', offsetHours: 0, badge: '+0h', statusLabel: 'WAT, GMT+1' },
-  { id: 'cas', name: 'Casablanca', country: 'Morocco', flag: '🇲🇦', timezone: 'Africa/Casablanca', offsetHours: 0, badge: '+0h', statusLabel: 'WEST, GMT+1' },
-  { id: 'add', name: 'Addis Ababa', country: 'Ethiopia', flag: '🇪🇹', timezone: 'Africa/Addis_Ababa', offsetHours: 2, badge: '+2h', statusLabel: 'EAT, GMT+3' },
-  { id: 'acc', name: 'Accra', country: 'Ghana', flag: '🇬🇭', timezone: 'Africa/Accra', offsetHours: -1, badge: '-1h', statusLabel: 'GMT, GMT+0' },
-  { id: 'kgl', name: 'Kigali', country: 'Rwanda', flag: '🇷🇼', timezone: 'Africa/Kigali', offsetHours: 1, badge: '+1h', statusLabel: 'CAT, GMT+2' },
-];
+// Canonical Global Cities Dataset across all 7 Continents
+export const POPULAR_AVAILABLE_CITIES: CityTime[] = getCanonicalCities().map((c) =>
+  toChronosCityTime(c, c.id === 'lon')
+);
 
 export function detectUserLocalCity(): CityTime {
   try {
@@ -282,15 +187,37 @@ export function getBaseCity(ws?: Workspace): CityTime {
   return detectUserLocalCity();
 }
 
-export function getCityRelativeOffsetHours(city: CityTime, baseCity?: CityTime): number {
+let currentActiveDateParts: DateParts = getTodayDateParts();
+let currentFocusHour: number = 12;
+
+export function getCityLocalTimeForBaseMinutes(
+  city: CityTime,
+  baseCity: CityTime,
+  date: DateParts,
+  baseMinutes: number
+) {
+  return getLocalTimeForDateParts(
+    city.timezone,
+    baseCity.timezone,
+    date,
+    baseMinutes
+  );
+}
+
+export function getCityRelativeOffsetHours(
+  city: CityTime,
+  baseCity?: CityTime,
+  dateOrParts?: Date | DateParts,
+  startMinutes?: number
+): number {
   if (!city) return 0;
   const base = baseCity || getBaseCity();
   if (!base || !city.timezone || !base.timezone || city.id === base.id || city.timezone === base.timezone) {
     return 0;
   }
-  const cityMin = getTzOffsetMinutes(city.timezone);
-  const baseMin = getTzOffsetMinutes(base.timezone);
-  return (cityMin - baseMin) / 60;
+  const effectiveDate = dateOrParts || currentActiveDateParts;
+  const effectiveMins = typeof startMinutes === 'number' ? startMinutes : currentFocusHour * 60;
+  return getCoreRelativeOffsetHours(city.timezone, base.timezone, effectiveDate, effectiveMins);
 }
 
 export function formatOffsetBadge(offsetHours: number, isBase: boolean = false): string {
@@ -303,28 +230,72 @@ export function formatOffsetBadge(offsetHours: number, isBase: boolean = false):
   return `${sign}${h}:${m.toString().padStart(2, '0')}h`;
 }
 
-export function getCityStatusLabel(timeZone?: string, date: Date = new Date()): string {
+export function getCityOffsetBadgeForBaseMinutes(
+  city: CityTime,
+  baseCity: CityTime,
+  date: DateParts,
+  baseMinutes: number,
+  isBase: boolean = false
+): string {
+  if (isBase || city.id === baseCity.id || city.timezone === baseCity.timezone) return 'Base';
+
+  try {
+    return formatOffsetBadge(
+      getCityRelativeOffsetHours(city, baseCity, date, baseMinutes),
+      false
+    );
+  } catch (error) {
+    if (isInvalidCivilTimeError(error)) return 'DST unavailable';
+    throw error;
+  }
+}
+
+export function getCityStatusLabel(
+  timeZone?: string,
+  dateOrParts?: Date | DateParts,
+  baseTimezone?: string
+): string {
   if (!timeZone) return 'GMT';
   try {
+    const effectiveDate = dateOrParts || currentActiveDateParts;
+    const focusMinutes = Math.min(1439, Math.max(0, Math.round(currentFocusHour * 60)));
+    const instant = effectiveDate instanceof Date
+      ? effectiveDate
+      : datePartsToInstant(
+          effectiveDate,
+          Math.floor(focusMinutes / 60),
+          focusMinutes % 60,
+          baseTimezone || timeZone
+        );
+
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timeZone,
+      timeZone,
       timeZoneName: 'short',
     });
-    const parts = formatter.formatToParts(date);
+    const parts = formatter.formatToParts(instant);
     const tzName = parts.find((p) => p.type === 'timeZoneName')?.value || '';
-    const offsetMin = getTzOffsetMinutes(timeZone, date);
+    const offsetMin = getTimezoneOffsetMinutes(timeZone, instant);
     const sign = offsetMin >= 0 ? '+' : '-';
     const absMin = Math.abs(offsetMin);
     const h = Math.floor(absMin / 60);
     const m = absMin % 60;
     const gmtStr = m === 0 ? `GMT${sign}${h}` : `GMT${sign}${h}:${m.toString().padStart(2, '0')}`;
     return tzName ? `${tzName}, ${gmtStr}` : gmtStr;
-  } catch (_) {
-    return 'GMT';
+  } catch (error) {
+    return isInvalidCivilTimeError(error) ? 'DST unavailable' : 'GMT';
   }
 }
 let selectedMeetingDurationMinutes = 60;
 let isIntelligenceDockOpen = false;
+
+export function getManualDateSelectionState(parts: DateParts) {
+  const dateParts = { ...parts };
+  return {
+    dateParts,
+    displayDate: new Date(dateParts.year, dateParts.month - 1, dateParts.day, 12, 0, 0, 0),
+    isLiveSync: false as const,
+  };
+}
 
 // Keyboard navigation indexes
 let focusedWsIndex = 0;
@@ -347,9 +318,9 @@ export function initChronosDesktop() {
     const savedWs = localStorage.getItem('rtz-workspaces-v3');
     if (savedWs) {
       try {
-        const parsed = JSON.parse(savedWs);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          WORKSPACES = parsed;
+        const valResult = parseAndValidateWorkspaceJson(savedWs);
+        if (valResult.success && valResult.workspaces && valResult.workspaces.length > 0) {
+          WORKSPACES = valResult.workspaces;
           const savedActiveId = localStorage.getItem('rtz-active-workspace-id');
           if (savedActiveId && WORKSPACES.some((w) => w.id === savedActiveId)) {
             activeWorkspaceId = savedActiveId;
@@ -522,7 +493,7 @@ export function initChronosDesktop() {
     // Disabled toast popup per user request
   }
 
-  function fallbackCopy(text: string) {
+  function fallbackCopy(text: string): boolean {
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
@@ -532,22 +503,20 @@ export function initChronosDesktop() {
     textArea.focus();
     textArea.select();
     try {
-      document.execCommand('copy');
+      return document.execCommand('copy');
     } catch (err) {
       console.error('Fallback copy error', err);
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
     }
-    document.body.removeChild(textArea);
   }
 
-  function copyToClipboard(text: string): Promise<void> {
+  function copyToClipboard(text: string): Promise<boolean> {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(() => {
-        fallbackCopy(text);
-      });
-    } else {
-      fallbackCopy(text);
-      return Promise.resolve();
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
     }
+    return Promise.resolve(fallbackCopy(text));
   }
 
   function formatTime(hourFloat: number, is24: boolean): string {
@@ -594,6 +563,32 @@ export function initChronosDesktop() {
     return total > 0 ? total : null;
   }
 
+  function getFocusBaseMinutes(): number {
+    return Math.min(1439, Math.max(0, Math.round(focusHour * 60)));
+  }
+
+  function projectAtFocus(city: CityTime, baseCity: CityTime, baseMinutes = getFocusBaseMinutes()) {
+    try {
+      return getCityLocalTimeForBaseMinutes(city, baseCity, currentActiveDateParts, baseMinutes);
+    } catch (error) {
+      if (isInvalidCivilTimeError(error)) return null;
+      throw error;
+    }
+  }
+
+  function rebaseFocusToNewBase(newBaseCity: CityTime, oldBaseCity: CityTime) {
+    const projected = projectAtFocus(newBaseCity, oldBaseCity);
+    if (!projected) return;
+
+    focusHour = projected.hour + projected.minute / 60;
+    currentFocusHour = focusHour;
+    currentActiveDateParts = { ...projected.date };
+    selectedDateObj = datePartsToDisplayDate(projected.date);
+    calendarViewDate = datePartsToDisplayDate(projected.date);
+    activeSelectedDate = formatDateToPill(selectedDateObj);
+    if (currentDateLabel) currentDateLabel.textContent = activeSelectedDate;
+  }
+
   function getHourStatusClass(localHour: number): string {
     if (localHour >= workStartHour && localHour < workEndHour) {
       return 'bg-emerald-950/40 border-r border-emerald-900/30 hover:bg-emerald-900/60';
@@ -619,51 +614,48 @@ export function initChronosDesktop() {
   function calculateBestTimes(): { hour: number; score: number; numWorking: number }[] {
     const ws = getActiveWorkspace();
     const baseCity = getBaseCity(ws);
-    const results: { hour: number; score: number; numWorking: number }[] = [];
-    const totalCities = Math.max(1, ws.cities.length);
+    const participants: ParticipantWorkHours[] = ws.cities.map((c) => ({
+      timezone: c.timezone,
+      workStartMinutes: workStartHour * 60,
+      workEndMinutes: workEndHour * 60,
+    }));
 
-    for (let h = 0; h < 24; h++) {
-      let numWorking = 0;
-      let numBorder = 0;
-      let numSleep = 0;
+    const best = calculateBestMeetingSlots(
+      currentActiveDateParts,
+      selectedMeetingDurationMinutes,
+      baseCity.timezone,
+      participants,
+      3
+    );
 
-      ws.cities.forEach((c) => {
-        const offset = getCityRelativeOffsetHours(c, baseCity);
-        const localHour = (Math.floor(h + offset) + 24) % 24;
-        if (localHour >= workStartHour && localHour < workEndHour) {
-          numWorking++;
-        } else {
-          const borderMorningStart = Math.max(0, workStartHour - 2);
-          const borderEveningEnd = Math.min(24, workEndHour + 4);
-          if ((localHour >= borderMorningStart && localHour < workStartHour) || (localHour >= workEndHour && localHour < borderEveningEnd)) {
-            numBorder++;
-          } else {
-            numSleep++;
-          }
-        }
-      });
+    return best.map((b) => ({
+      hour: b.startHour,
+      score: b.score,
+      numWorking: b.numWorking,
+    }));
+  }
 
-      const score = (100 * numWorking + 60 * numBorder + -20 * numSleep) / totalCities;
-      results.push({ hour: h, score, numWorking });
+  function renderUnavailableMeetingQuality() {
+    if (qualityStars) qualityStars.textContent = '☆☆☆☆☆';
+    if (qualityBadge) {
+      qualityBadge.textContent = 'UNAVAILABLE';
+      qualityBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded border font-semibold bg-zinc-500/15 text-zinc-400 border-zinc-500/30';
     }
-
-    // Rank and Sort
-    results.sort((a, b) => {
-      if (Math.abs(b.score - a.score) > 1e-9) {
-        return b.score - a.score;
-      }
-      if (b.numWorking !== a.numWorking) {
-        return b.numWorking - a.numWorking;
-      }
-      const distA = Math.abs(a.hour - 12);
-      const distB = Math.abs(b.hour - 12);
-      if (distA !== distB) {
-        return distA - distB;
-      }
-      return a.hour - b.hour;
-    });
-
-    return results.slice(0, 3);
+    if (qualityTitle) {
+      qualityTitle.textContent = 'Selected local time is unavailable.';
+    }
+    if (qualityDesc) {
+      qualityDesc.textContent = 'This start time is skipped by a daylight-saving transition. Choose another start time before scheduling.';
+    }
+    if (recPillsContainer) {
+      recPillsContainer.innerHTML = '<span class="text-xs text-zinc-500 font-mono py-1">Choose another start time to view recommendations</span>';
+    }
+    if (overlapDotEl) {
+      overlapDotEl.className = 'w-2 h-2 rounded-full bg-zinc-500';
+    }
+    if (overlapTextEl) {
+      overlapTextEl.textContent = 'Unavailable: choose another start time';
+    }
   }
 
   // Update Meeting Quality, Recommendations & Bottom Pill
@@ -672,35 +664,50 @@ export function initChronosDesktop() {
     if (ws.cities.length === 0) return;
     const baseCity = getBaseCity(ws);
 
-    let numWorking = 0;
-    let numBorder = 0;
-    let numSleep = 0;
+    const startMins = getFocusBaseMinutes();
+    let slotEval: ReturnType<typeof evaluateMeetingSlot>;
+    try {
+      slotEval = evaluateMeetingSlot({
+        date: currentActiveDateParts,
+        baseTimezone: baseCity.timezone,
+        startMinutes: startMins,
+        durationMinutes: selectedMeetingDurationMinutes,
+        participants: ws.cities.map((c) => ({
+          timezone: c.timezone,
+          workStartMinutes: workStartHour * 60,
+          workEndMinutes: workEndHour * 60,
+        })),
+      });
+    } catch (error) {
+      if (!isInvalidCivilTimeError(error)) {
+        throw error;
+      }
+      renderUnavailableMeetingQuality();
+      return;
+    }
+
+    const numWorking = slotEval.numWorking;
     const nonWorkingDetails: string[] = [];
 
     ws.cities.forEach((c) => {
-      const offset = getCityRelativeOffsetHours(c, baseCity);
-      const localHourFloat = (focusHour + offset + 24) % 24;
-      const localHour = Math.floor(localHourFloat);
-      const formattedLocal = formatTime(localHourFloat, is24Hour);
-      const phrase = getContextualTimeOfDay(localHour);
-
-      if (localHour >= workStartHour && localHour < workEndHour) {
-        numWorking++;
-      } else {
-        const borderMorningStart = Math.max(0, workStartHour - 2);
-        const borderEveningEnd = Math.min(24, workEndHour + 4);
-        if ((localHour >= borderMorningStart && localHour < workStartHour) || (localHour >= workEndHour && localHour < borderEveningEnd)) {
-          numBorder++;
-          nonWorkingDetails.push(`${c.name} is ${phrase} (${formattedLocal})`);
-        } else {
-          numSleep++;
-          nonWorkingDetails.push(`${c.name} is ${phrase} (${formattedLocal})`);
-        }
+      const rating = slotEval.ratings[c.timezone];
+      if (rating !== 'working') {
+        const projected = getCityLocalTimeForBaseMinutes(
+          c,
+          baseCity,
+          currentActiveDateParts,
+          startMins
+        );
+        const localHourFloat = projected.hour + projected.minute / 60;
+        const localHour = projected.hour;
+        const formattedLocal = formatTime(localHourFloat, is24Hour);
+        const phrase = getContextualTimeOfDay(localHour);
+        nonWorkingDetails.push(`${c.name} is ${phrase} (${formattedLocal})`);
       }
     });
 
     const total = ws.cities.length;
-    const score = Math.round((100 * numWorking + 60 * numBorder + -20 * numSleep) / total);
+    const score = slotEval.score;
 
     let stars = 3;
     let label = 'Fair';
@@ -862,61 +869,84 @@ export function initChronosDesktop() {
     cityRowsContainer.innerHTML = ws.cities
       .map((city, cityIndex) => {
         const isBase = city.isBase || cityIndex === 0;
-        const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
-        const badge = formatOffsetBadge(offset, isBase);
-        const statusLabel = getCityStatusLabel(city.timezone);
+        const badge = getCityOffsetBadgeForBaseMinutes(
+          city,
+          baseCity,
+          currentActiveDateParts,
+          getFocusBaseMinutes(),
+          isBase
+        );
+        const statusLabel = getCityStatusLabel(city.timezone, currentActiveDateParts, baseCity.timezone);
 
         let timelineBlocks = '';
         for (let h = 0; h < 24; h++) {
-          const localHourFloat = (h + offset + 24) % 24;
-          const localHour = Math.floor(localHourFloat);
-          const statusClass = getHourStatusClass(localHourFloat);
-          timelineBlocks += `
-            <div class="h-full transition-colors ${statusClass} flex flex-col justify-end p-1 select-none pointer-events-none" title="${localHour}:00 ${city.name}">
-              <span class="text-[9px] font-mono text-zinc-600 pointer-events-none select-none">${localHour}</span>
-            </div>
-          `;
+          try {
+            const projected = getCityLocalTimeForBaseMinutes(
+              city,
+              baseCity,
+              currentActiveDateParts,
+              h * 60
+            );
+            const localHourFloat = projected.hour + projected.minute / 60;
+            const localHour = Math.floor(localHourFloat);
+            const statusClass = getHourStatusClass(localHourFloat);
+            const localTime = formatTime(localHourFloat, is24Hour);
+            timelineBlocks += `
+              <div class="h-full transition-colors ${statusClass} flex flex-col justify-end p-1 select-none pointer-events-none" title="${localTime} ${escapeHtml(city.name)}">
+                <span class="text-[9px] font-mono text-zinc-600 pointer-events-none select-none">${localHour}</span>
+              </div>
+            `;
+          } catch (error) {
+            if (!isInvalidCivilTimeError(error)) {
+              throw error;
+            }
+            timelineBlocks += `
+              <div class="h-full flex flex-col justify-end p-1 select-none pointer-events-none bg-zinc-900/80 text-zinc-600" title="Unavailable DST time in ${escapeHtml(city.name)}" aria-label="${h.toString().padStart(2, '0')}:00 unavailable because of a daylight-saving transition">
+                <span class="text-[9px] font-mono">—</span>
+              </div>
+            `;
+          }
         }
 
         return `
-          <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative select-none" id="row-${city.id}" data-city-id="${city.id}">
+          <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative select-none" id="row-${escapeHtml(city.id)}" data-city-id="${escapeHtml(city.id)}">
             <!-- Left City Card with Hover Actions (Draggable Card) -->
-            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" data-city-id="${city.id}">
+            <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" data-city-id="${escapeHtml(city.id)}">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span class="text-base leading-none shrink-0">${city.flag}</span>
-                  <span class="text-sm font-semibold text-white tracking-tight truncate">${city.name}</span>
+                  <span class="text-base leading-none shrink-0">${escapeHtml(city.flag)}</span>
+                  <span class="text-sm font-semibold text-white tracking-tight truncate">${escapeHtml(city.name)}</span>
                 </div>
 
                 <!-- Hover Actions: Shift Up, Shift Down, Delete (Revealed on card hover) -->
                 <div class="flex items-center gap-0.5 shrink-0">
                   <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 mr-0.5">
-                    ${badge}
+                    ${escapeHtml(badge)}
                   </span>
                   <button 
                     type="button" 
                     data-action="shift-city-up" 
-                    data-city-id="${city.id}" 
+                    data-city-id="${escapeHtml(city.id)}"
                     class="chronos-delete-btn p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer" 
-                    title="Move ${city.name} up"
+                    title="Move ${escapeHtml(city.name)} up"
                   >
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
                   </button>
                   <button 
                     type="button" 
                     data-action="shift-city-down" 
-                    data-city-id="${city.id}" 
+                    data-city-id="${escapeHtml(city.id)}"
                     class="chronos-delete-btn p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer" 
-                    title="Move ${city.name} down"
+                    title="Move ${escapeHtml(city.name)} down"
                   >
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
                   </button>
                   <button 
                     type="button" 
                     data-action="delete-city" 
-                    data-city-id="${city.id}" 
+                    data-city-id="${escapeHtml(city.id)}"
                     class="chronos-delete-btn p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all cursor-pointer" 
-                    title="Remove ${city.name} from workspace"
+                    title="Remove ${escapeHtml(city.name)} from workspace"
                   >
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   </button>
@@ -924,14 +954,14 @@ export function initChronosDesktop() {
               </div>
 
               <!-- Clock Display -->
-              <div id="clock-${city.id}" class="font-mono text-3xl font-bold tracking-tight text-white pointer-events-none">
+              <div id="clock-${escapeHtml(city.id)}" class="font-mono text-3xl font-bold tracking-tight text-white pointer-events-none">
                 --:--
               </div>
 
               <!-- Status Dot and Label -->
               <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-mono pointer-events-none">
-                <span id="dot-${city.id}" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
-                <span id="status-${city.id}">${statusLabel}</span>
+                <span id="dot-${escapeHtml(city.id)}" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
+                <span id="status-${escapeHtml(city.id)}">${escapeHtml(statusLabel)}</span>
               </div>
             </div>
 
@@ -1090,8 +1120,7 @@ export function initChronosDesktop() {
                   if (isLiveSync) {
                     snapToNow();
                   } else {
-                    const offset = getCityRelativeOffsetHours(newBaseCity, oldBaseCity);
-                    focusHour = (focusHour + offset + 24) % 24;
+                    rebaseFocusToNewBase(newBaseCity, oldBaseCity);
                   }
                 }
 
@@ -1144,8 +1173,7 @@ export function initChronosDesktop() {
       if (isLiveSync) {
         snapToNow();
       } else {
-        const offset = getCityRelativeOffsetHours(newBaseCity, oldBaseCity);
-        focusHour = (focusHour + offset + 24) % 24;
+        rebaseFocusToNewBase(newBaseCity, oldBaseCity);
       }
     }
 
@@ -1177,7 +1205,7 @@ export function initChronosDesktop() {
     const baseCity = getBaseCity(ws);
     const offset = getCityRelativeOffsetHours(city, baseCity);
     const badge = formatOffsetBadge(offset, false);
-    const statusLabel = getCityStatusLabel(city.timezone);
+    const statusLabel = getCityStatusLabel(city.timezone, currentActiveDateParts, baseCity.timezone);
 
     ws.cities.push({
       ...city,
@@ -1229,11 +1257,11 @@ export function initChronosDesktop() {
         >
           <button 
             type="button" 
-            data-ws-id="${w.id}" 
+            data-ws-id="${escapeHtml(w.id)}"
             class="flex items-center gap-2 flex-1 text-left cursor-pointer overflow-hidden truncate"
           >
             <span class="w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]' : 'bg-zinc-600'}"></span>
-            <span class="truncate">${w.name}</span>
+            <span class="truncate">${escapeHtml(w.name)}</span>
           </button>
 
           <!-- Right side: City count & Hover Actions (Rename + Delete) -->
@@ -1244,7 +1272,7 @@ export function initChronosDesktop() {
             <button 
               type="button" 
               data-action="rename-ws" 
-              data-ws-id="${w.id}"
+              data-ws-id="${escapeHtml(w.id)}"
               class="hidden group-hover:flex p-1 rounded hover:bg-zinc-700/60 text-zinc-400 hover:text-white transition-colors cursor-pointer" 
               title="Rename workspace"
             >
@@ -1255,7 +1283,7 @@ export function initChronosDesktop() {
             <button 
               type="button" 
               data-action="delete-ws" 
-              data-ws-id="${w.id}"
+              data-ws-id="${escapeHtml(w.id)}"
               class="hidden group-hover:flex p-1 rounded hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer" 
               title="Delete workspace"
             >
@@ -1421,8 +1449,19 @@ export function initChronosDesktop() {
   }
 
   // Date Selector & Calendar State
-  let selectedDateObj: Date = new Date();
-  let calendarViewDate: Date = new Date();
+  let selectedDateObj: Date;
+  let calendarViewDate: Date;
+
+  function datePartsToDisplayDate(parts: DateParts): Date {
+    // Use a stable local noon only for calendar rendering; calculations use DateParts.
+    return new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0);
+  }
+
+  const initialDateParts = getTodayDateParts(baseCity.timezone);
+  currentActiveDateParts = { ...initialDateParts };
+  selectedDateObj = datePartsToDisplayDate(initialDateParts);
+  calendarViewDate = datePartsToDisplayDate(initialDateParts);
+  activeSelectedDate = formatDateToPill(selectedDateObj);
 
   function formatDateToPill(d: Date): string {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1540,15 +1579,29 @@ export function initChronosDesktop() {
     });
   }
 
-  function selectDateObj(d: Date) {
-    selectedDateObj = new Date(d);
-    calendarViewDate = new Date(d);
+  function selectDateParts(parts: DateParts) {
+    const selection = getManualDateSelectionState(parts);
+    isLiveSync = selection.isLiveSync;
+    currentActiveDateParts = selection.dateParts;
+    selectedDateObj = selection.displayDate;
+    calendarViewDate = new Date(selection.displayDate);
     activeSelectedDate = formatDateToPill(selectedDateObj);
     if (currentDateLabel) {
       currentDateLabel.textContent = activeSelectedDate;
     }
     renderCalendar();
     closeDateDropdown();
+    renderCityRows();
+    updateClocks();
+    updateMeetingQuality();
+  }
+
+  function selectDateObj(d: Date) {
+    selectDateParts({
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+    });
   }
 
   if (calMonthSelect) {
@@ -1594,13 +1647,21 @@ export function initChronosDesktop() {
   }
 
   if (calTodayBtn) {
-    calTodayBtn.addEventListener('click', () => selectDateObj(new Date()));
+    calTodayBtn.addEventListener('click', () => {
+      selectDateParts(getTodayDateParts(getBaseCity().timezone));
+    });
   }
   if (calTomorrowBtn) {
-    calTomorrowBtn.addEventListener('click', () => selectDateObj(new Date(Date.now() + 86400000)));
+    calTomorrowBtn.addEventListener('click', () => {
+      const today = getTodayDateParts(getBaseCity().timezone);
+      selectDateParts(addCalendarDays(today, 1));
+    });
   }
   if (calNextWeekBtn) {
-    calNextWeekBtn.addEventListener('click', () => selectDateObj(new Date(Date.now() + 7 * 86400000)));
+    calNextWeekBtn.addEventListener('click', () => {
+      const today = getTodayDateParts(getBaseCity().timezone);
+      selectDateParts(addCalendarDays(today, 7));
+    });
   }
 
   // Initial date label sync
@@ -1767,15 +1828,32 @@ export function initChronosDesktop() {
     }
   }
 
-  function getSelectedDateISOParts(): { dateCompact: string; dateDashed: string } {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = (today.getMonth() + 1).toString().padStart(2, '0');
-    const dd = today.getDate().toString().padStart(2, '0');
-    return {
-      dateCompact: `${yyyy}${mm}${dd}`,
-      dateDashed: `${yyyy}-${mm}-${dd}`,
-    };
+  function resolveSelectedStartInstant(baseTimezone: string): Date | null {
+    const startMinutes = getFocusBaseMinutes();
+    try {
+      return datePartsToInstant(
+        currentActiveDateParts,
+        Math.floor(startMinutes / 60),
+        startMinutes % 60,
+        baseTimezone
+      );
+    } catch (error) {
+      if (!isInvalidCivilTimeError(error)) {
+        throw error;
+      }
+      if (calendarSelectBtn) {
+        const label = calendarSelectBtn.querySelector('span');
+        if (label) {
+          const original = label.textContent;
+          label.textContent = 'DST TIME UNAVAILABLE';
+          setTimeout(() => {
+            if (label) label.textContent = original;
+          }, 2200);
+        }
+      }
+      closeCalendarDropdown();
+      return null;
+    }
   }
 
   // Google Calendar Export
@@ -1783,25 +1861,24 @@ export function initChronosDesktop() {
     exportGoogleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const ws = getActiveWorkspace();
-      const title = encodeURIComponent(`Team Sync (${ws.name})`);
-      const startH = Math.floor(focusHour);
-      const startM = Math.round((focusHour - startH) * 60);
-      const endTotalM = startH * 60 + startM + selectedMeetingDurationMinutes;
-      const endH = Math.floor(endTotalM / 60) % 24;
-      const endM = endTotalM % 60;
-
-      const { dateCompact } = getSelectedDateISOParts();
-      const startIso = `${dateCompact}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
-      const endIso = `${dateCompact}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
       const baseCity = getBaseCity(ws);
+      const title = encodeURIComponent(`Team Sync (${ws.name})`);
+      const startInstant = resolveSelectedStartInstant(baseCity.timezone);
+      if (!startInstant) return;
+      const endInstant = new Date(startInstant.getTime() + selectedMeetingDurationMinutes * 60000);
+      const startIso = startInstant.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const endIso = endInstant.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
       const details = encodeURIComponent(
         `Scheduled with RealTimeZones (${ws.name})\n\n` +
-        ws.cities.map((c, idx) => {
-          const isBase = c.isBase || idx === 0;
-          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-          const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
-          const status = getCityStatusLabel(c.timezone);
+        ws.cities.map((c) => {
+          const projected = projectAtFocus(c, baseCity);
+          const t = projected
+            ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+            : '—';
+          const status = projected
+            ? getCityStatusLabel(c.timezone, currentActiveDateParts, baseCity.timezone)
+            : 'DST unavailable';
           return `• ${c.name} (${c.flag || ''}): ${t} (${status})`;
         }).join('\n') +
         '\n\nhttps://realtimezones.com'
@@ -1820,23 +1897,22 @@ export function initChronosDesktop() {
       const ws = getActiveWorkspace();
       const baseCity = getBaseCity(ws);
       const title = encodeURIComponent(`Team Sync (${ws.name})`);
-      const startH = Math.floor(focusHour);
-      const startM = Math.round((focusHour - startH) * 60);
-      const endTotalM = startH * 60 + startM + selectedMeetingDurationMinutes;
-      const endH = Math.floor(endTotalM / 60) % 24;
-      const endM = endTotalM % 60;
-
-      const { dateDashed } = getSelectedDateISOParts();
-      const startIso = `${dateDashed}T${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}:00Z`;
-      const endIso = `${dateDashed}T${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}:00Z`;
+      const startInstant = resolveSelectedStartInstant(baseCity.timezone);
+      if (!startInstant) return;
+      const endInstant = new Date(startInstant.getTime() + selectedMeetingDurationMinutes * 60000);
+      const startIso = startInstant.toISOString().split('.')[0] + 'Z';
+      const endIso = endInstant.toISOString().split('.')[0] + 'Z';
 
       const details = encodeURIComponent(
         `Scheduled with RealTimeZones (${ws.name})\n\n` +
-        ws.cities.map((c, idx) => {
-          const isBase = c.isBase || idx === 0;
-          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-          const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
-          const status = getCityStatusLabel(c.timezone);
+        ws.cities.map((c) => {
+          const projected = projectAtFocus(c, baseCity);
+          const t = projected
+            ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+            : '—';
+          const status = projected
+            ? getCityStatusLabel(c.timezone, currentActiveDateParts, baseCity.timezone)
+            : 'DST unavailable';
           return `• ${c.name} (${c.flag || ''}): ${t} (${status})`;
         }).join('\n') +
         '\n\nhttps://realtimezones.com'
@@ -1853,24 +1929,24 @@ export function initChronosDesktop() {
     if (e) e.stopPropagation();
     const ws = getActiveWorkspace();
     const baseCity = getBaseCity(ws);
-    const startH = Math.floor(focusHour);
-    const startM = Math.round((focusHour - startH) * 60);
-    const endTotalM = startH * 60 + startM + selectedMeetingDurationMinutes;
-    const endH = Math.floor(endTotalM / 60) % 24;
-    const endM = endTotalM % 60;
-
-    const { dateCompact } = getSelectedDateISOParts();
-    const startIso = `${dateCompact}T${startH.toString().padStart(2, '0')}${startM.toString().padStart(2, '0')}00Z`;
-    const endIso = `${dateCompact}T${endH.toString().padStart(2, '0')}${endM.toString().padStart(2, '0')}00Z`;
+    const startInstant = resolveSelectedStartInstant(baseCity.timezone);
+    if (!startInstant) return;
+    const endInstant = new Date(startInstant.getTime() + selectedMeetingDurationMinutes * 60000);
+    const startIso = startInstant.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endIso = endInstant.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
     const description = [
       `Scheduled via RealTimeZones (${ws.name})`,
       '',
-      ...ws.cities.map((c, idx) => {
-        const isBase = c.isBase || idx === 0;
-        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-        const t = formatTime((focusHour + offset + 24) % 24, is24Hour);
-        return `• ${c.name}: ${t}`;
+      ...ws.cities.map((c) => {
+        const projected = projectAtFocus(c, baseCity);
+        const t = projected
+          ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+          : '—';
+        const status = projected
+          ? getCityStatusLabel(c.timezone, currentActiveDateParts, baseCity.timezone)
+          : 'DST unavailable';
+        return `• ${c.name}: ${t} (${status})`;
       }),
       '',
       'https://realtimezones.com'
@@ -1894,7 +1970,7 @@ export function initChronosDesktop() {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const filename = `team-sync-${ws.id || 'workspace'}.ics`;
+    const filename = sanitizeCalendarFilename(`team-sync-${ws.id || 'workspace'}.ics`);
 
     // 1. If in Tauri Desktop App: Call native Rust save_and_open_ics command
     let tauriSuccess = false;
@@ -1980,18 +2056,26 @@ export function initChronosDesktop() {
         `⏰ Time Window: ${startH} – ${endH} (${baseCity?.name || 'Local'} Time)`,
         '',
         '👥 Local Times for Participants:',
-        ...ws.cities.map((c, idx) => {
-          const isBase = c.isBase || idx === 0;
-          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-          const t = formatTime((slotHour + offset + 24) % 24, is24Hour);
-          const status = getCityStatusLabel(c.timezone);
+        ...ws.cities.map((c) => {
+          const slotMinutes = topSlot ? topSlot.hour * 60 : getFocusBaseMinutes();
+          const projected = projectAtFocus(c, baseCity, slotMinutes);
+          const t = projected
+            ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+            : '— DST unavailable';
+          const status = projected
+            ? getCityStatusLabel(c.timezone, currentActiveDateParts, baseCity.timezone)
+            : 'DST unavailable';
           return `  • ${c.name} (${c.flag || ''}): ${t} (${status})`;
         }),
         '',
         `⚡ Coordinated via RealTimeZones • https://realtimezones.com`,
       ].join('\n');
 
-      copyToClipboard(inviteText).then(() => {
+      copyToClipboard(inviteText).then((copied) => {
+        if (!copied) {
+          showToast('Could not copy invite to clipboard.');
+          return;
+        }
         const originalHtml = shareBtn.innerHTML;
         shareBtn.classList.add('border-emerald-500/40', 'bg-emerald-950/20');
         shareBtn.innerHTML = `
@@ -2156,20 +2240,20 @@ export function initChronosDesktop() {
                 const alreadyInWs = currentWs.cities.some((c) => c.id === city.id);
                 return `
                   <div 
-                    data-omni-row="${city.id}"
+                    data-omni-row="${escapeHtml(city.id)}"
                     class="p-2.5 sm:p-3 flex items-center justify-between hover:bg-[#15151c] transition-all cursor-pointer"
                   >
                     <div class="flex items-center gap-3">
-                      <span class="text-lg leading-none">${city.flag}</span>
+                      <span class="text-lg leading-none">${escapeHtml(city.flag)}</span>
                       <div class="flex flex-col">
-                        <span class="text-xs font-medium text-white">${city.name}, <span class="text-zinc-400 font-normal">${city.country}</span></span>
-                        <span class="text-[10px] text-zinc-500 font-mono">${city.timezone} • ${city.statusLabel}</span>
+                        <span class="text-xs font-medium text-white">${escapeHtml(city.name)}, <span class="text-zinc-400 font-normal">${escapeHtml(city.country)}</span></span>
+                        <span class="text-[10px] text-zinc-500 font-mono">${escapeHtml(city.timezone)} • ${escapeHtml(city.statusLabel)}</span>
                       </div>
                     </div>
                     ${
                       alreadyInWs
                         ? '<span class="text-[10px] font-mono text-zinc-500 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">In Workspace</span>'
-                        : `<button type="button" data-omni-add-city="${city.id}" class="h-7 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 font-medium text-xs transition-all cursor-pointer flex items-center gap-1.5">
+                        : `<button type="button" data-omni-add-city="${escapeHtml(city.id)}" class="h-7 px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-zinc-950 font-medium text-xs transition-all cursor-pointer flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                             <span>Add</span>
                           </button>`
@@ -2370,14 +2454,33 @@ export function initChronosDesktop() {
   function updateClocks() {
     const ws = getActiveWorkspace();
     const baseCity = getBaseCity(ws);
+    const baseMinutes = Math.min(1439, Math.max(0, Math.round(focusHour * 60)));
+    currentFocusHour = focusHour;
 
-    ws.cities.forEach((city, cityIndex) => {
-      const isBase = city.isBase || cityIndex === 0;
-      const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
-      const localHourFloat = (focusHour + offset + 24) % 24;
+    ws.cities.forEach((city) => {
       const clockEl = document.getElementById(`clock-${city.id}`);
       const statusDot = document.getElementById(`dot-${city.id}`);
       const statusText = document.getElementById(`status-${city.id}`);
+
+      let projected: ReturnType<typeof getCityLocalTimeForBaseMinutes>;
+      try {
+        projected = getCityLocalTimeForBaseMinutes(
+          city,
+          baseCity,
+          currentActiveDateParts,
+          baseMinutes
+        );
+      } catch (error) {
+        if (!isInvalidCivilTimeError(error)) {
+          throw error;
+        }
+        if (clockEl) clockEl.textContent = '—';
+        if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-zinc-500';
+        if (statusText) statusText.textContent = 'DST unavailable';
+        return;
+      }
+
+      const localHourFloat = projected.hour + projected.minute / 60;
 
       if (clockEl) {
         clockEl.textContent = formatTime(localHourFloat, is24Hour);
@@ -2385,7 +2488,7 @@ export function initChronosDesktop() {
 
       let status: 'working' | 'border' | 'sleep' = 'sleep';
       let statusName = 'Sleep';
-      const offsetInfo = getCityStatusLabel(city.timezone);
+      const offsetInfo = getCityStatusLabel(city.timezone, currentActiveDateParts, baseCity.timezone);
 
       if (localHourFloat >= workStartHour && localHourFloat < workEndHour) {
         status = 'working';
@@ -2466,10 +2569,10 @@ export function initChronosDesktop() {
 
     const lines = [
       `RealTimeZones • ${ws.name}`,
-      ...ws.cities.map((c, idx) => {
-        const isBase = c.isBase || idx === 0;
-        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-        const localH = (focusHour + offset + 24) % 24;
+      ...ws.cities.map((c) => {
+        const projected = projectAtFocus(c, baseCity);
+        if (!projected) return `• ${c.name}: — (DST unavailable)`;
+        const localH = projected.hour + projected.minute / 60;
         const isWorking = localH >= workStartHour && localH < workEndHour;
         const status = isWorking ? 'Working' : 'Sleep';
         return `• ${c.name}: ${formatTime(localH, is24Hour)} (${status})`;
@@ -2502,10 +2605,21 @@ export function initChronosDesktop() {
         `;
       } else {
         menubarCitiesList.innerHTML = ws.cities
-          .map((city, cityIndex) => {
-            const isBase = city.isBase || cityIndex === 0;
-            const offset = isBase ? 0 : getCityRelativeOffsetHours(city, baseCity);
-            const localHourFloat = (focusHour + offset + 24) % 24;
+          .map((city) => {
+            const projected = projectAtFocus(city, baseCity);
+            if (!projected) {
+              return `
+                <div class="p-3 px-3.5 flex items-center justify-between hover:bg-[#16161c] transition-colors select-none">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-zinc-500"></span>
+                    <span class="text-xs font-semibold text-white tracking-tight">${escapeHtml(city.name)} ${escapeHtml(city.flag || '')}</span>
+                  </div>
+                  <span class="text-xs font-bold text-zinc-500 font-mono">— DST unavailable</span>
+                </div>
+              `;
+            }
+
+            const localHourFloat = projected.hour + projected.minute / 60;
             const isWorking = localHourFloat >= workStartHour && localHourFloat < workEndHour;
             const isBorder =
               (localHourFloat >= Math.max(0, workStartHour - 2) && localHourFloat < workStartHour) ||
@@ -2519,7 +2633,10 @@ export function initChronosDesktop() {
             }
 
             const formattedTime = formatTime(localHourFloat, is24Hour);
-            const badgeText = formatOffsetBadge(offset, isBase);
+            const badgeText = formatOffsetBadge(
+              getCityRelativeOffsetHours(city, baseCity, currentActiveDateParts, getFocusBaseMinutes()),
+              city.isBase
+            );
 
             return `
               <div class="p-3 px-3.5 flex items-center justify-between hover:bg-[#16161c] transition-colors select-none">
@@ -2527,8 +2644,8 @@ export function initChronosDesktop() {
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full ${dotClass}"></span>
                     <span class="text-xs font-semibold text-white tracking-tight flex items-center gap-1.5">
-                      <span>${city.name}</span>
-                      <span class="text-xs">${city.flag || ''}</span>
+                      <span>${escapeHtml(city.name)}</span>
+                      <span class="text-xs">${escapeHtml(city.flag || '')}</span>
                     </span>
                   </div>
                   <span class="text-[10px] text-zinc-500 font-mono pl-4">${badgeText}</span>
@@ -2628,16 +2745,19 @@ export function initChronosDesktop() {
       const baseCity = getBaseCity(ws);
       const bestSlots = calculateBestTimes();
       const topSlot = bestSlots[0];
-      const startH = formatTime(topSlot ? topSlot.hour : focusHour, is24Hour);
-      const endH = formatTime((topSlot ? topSlot.hour : focusHour) + selectedMeetingDurationMinutes / 60, is24Hour);
+      const slotMinutes = topSlot ? topSlot.hour * 60 : getFocusBaseMinutes();
+      const slotHour = slotMinutes / 60;
+      const startH = formatTime(slotHour, is24Hour);
+      const endH = formatTime(slotHour + selectedMeetingDurationMinutes / 60, is24Hour);
 
       const lines = [
         `🗓️ Meeting Slot (${ws.name}): ${startH} – ${endH} ${baseCity?.name || 'Base'}`,
         '',
-        ...ws.cities.map((c, idx) => {
-          const isBase = c.isBase || idx === 0;
-          const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-          const t = formatTime((topSlot ? topSlot.hour : focusHour) + offset, is24Hour);
+        ...ws.cities.map((c) => {
+          const projected = projectAtFocus(c, baseCity, slotMinutes);
+          const t = projected
+            ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+            : '— DST unavailable';
           return `• ${c.name} (${c.flag || ''}): ${t}`;
         }),
       ];
@@ -2823,11 +2943,18 @@ export function initChronosDesktop() {
     const sPart = parseInt(parts.find((p) => p.type === 'second')?.value || '0', 10);
 
     focusHour = hPart + mPart / 60 + sPart / 3600;
-    activeSelectedDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    currentFocusHour = focusHour;
+    const todayParts = getTodayDateParts(baseCity.timezone);
+    selectedDateObj = datePartsToDisplayDate(todayParts);
+    currentActiveDateParts = todayParts;
+    calendarViewDate = datePartsToDisplayDate(todayParts);
+    activeSelectedDate = formatDateToPill(selectedDateObj);
     if (currentDateLabel) {
       currentDateLabel.textContent = activeSelectedDate;
     }
     updateClocks();
+    renderCityRows();
+    updateMeetingQuality();
   }
 
   if (btnNow) {
@@ -2873,14 +3000,20 @@ export function initChronosDesktop() {
       e.stopPropagation();
       const ws = getActiveWorkspace();
       const baseCity = getBaseCity(ws);
-      const parts = ws.cities.map((c, idx) => {
-        const isBase = c.isBase || idx === 0;
-        const offset = isBase ? 0 : getCityRelativeOffsetHours(c, baseCity);
-        const time = formatTime((focusHour + offset + 24) % 24, is24Hour);
+      const baseMinutes = getFocusBaseMinutes();
+      const parts = ws.cities.map((c) => {
+        const projected = projectAtFocus(c, baseCity, baseMinutes);
+        const time = projected
+          ? formatTime(projected.hour + projected.minute / 60, is24Hour)
+          : '— DST unavailable';
         return `${time} ${c.name}`;
       });
       const text = `Meeting Slot: ${parts.join(' | ')}`;
-      copyToClipboard(text).then(() => {
+      copyToClipboard(text).then((copied) => {
+        if (!copied) {
+          showToast('Could not copy meeting slot to clipboard.');
+          return;
+        }
         const originalHtml = copySlotBtn.innerHTML;
         copySlotBtn.classList.add('border-emerald-500/40', 'bg-emerald-950/20');
         copySlotBtn.innerHTML = `
@@ -3198,11 +3331,11 @@ export function initChronosDesktop() {
   }
 
   if (exportJsonBtn) {
-    exportJsonBtn.addEventListener('click', () => {
-      const jsonStr = JSON.stringify(WORKSPACES, null, 2);
+    exportJsonBtn.addEventListener('click', async () => {
+      const jsonStr = JSON.stringify({ version: 1, workspaces: WORKSPACES }, null, 2);
       
       // 1. Copy JSON to clipboard
-      copyToClipboard(jsonStr);
+      const copied = await copyToClipboard(jsonStr);
 
       // 2. Trigger native blob file download
       try {
@@ -3222,7 +3355,7 @@ export function initChronosDesktop() {
       exportJsonBtn.classList.add('border-emerald-500/40', 'bg-emerald-950/20');
       exportJsonBtn.innerHTML = `
         <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        <span class="text-emerald-400 font-semibold text-xs">Exported & Copied JSON!</span>
+        <span class="text-emerald-400 font-semibold text-xs">${copied ? 'Exported & Copied JSON!' : 'Exported JSON (copy unavailable)'}</span>
       `;
       setTimeout(() => {
         exportJsonBtn.classList.remove('border-emerald-500/40', 'bg-emerald-950/20');
@@ -3237,20 +3370,18 @@ export function initChronosDesktop() {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
-          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].cities) {
-            WORKSPACES.splice(0, WORKSPACES.length, ...parsed);
-            activeWorkspaceId = WORKSPACES[0].id;
-            if (workspaceNameEl) workspaceNameEl.textContent = WORKSPACES[0].name;
-            renderWorkspaceList();
-            renderCityRows();
-            closeSettingsModal();
-          } else {
-            alert('Invalid workspaces JSON format.');
-          }
-        } catch (err) {
-          alert('Could not parse JSON file.');
+        const rawContent = event.target?.result as string;
+        const valResult = parseAndValidateWorkspaceJson(rawContent);
+        if (valResult.success && valResult.workspaces && valResult.workspaces.length > 0) {
+          WORKSPACES.splice(0, WORKSPACES.length, ...valResult.workspaces);
+          activeWorkspaceId = WORKSPACES[0].id;
+          if (workspaceNameEl) workspaceNameEl.textContent = WORKSPACES[0].name;
+          saveWorkspacesToStorage();
+          renderWorkspaceList();
+          renderCityRows();
+          closeSettingsModal();
+        } else {
+          alert(`Workspace import error:\n${valResult.error || 'Invalid or malformed workspace JSON format.'}`);
         }
       };
       reader.readAsText(file);

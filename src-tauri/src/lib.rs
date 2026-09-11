@@ -1,3 +1,4 @@
+use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{
@@ -40,6 +41,8 @@ fn save_and_open_ics(
     content: String,
     open_in_calendar: bool,
 ) -> Result<String, String> {
+    validate_ics_filename(&filename)?;
+
     let target_dir = app
         .path()
         .download_dir()
@@ -60,9 +63,7 @@ fn save_and_open_ics(
         }
         #[cfg(target_os = "macos")]
         {
-            let _ = std::process::Command::new("open")
-                .arg(&path_str)
-                .spawn();
+            let _ = std::process::Command::new("open").arg(&path_str).spawn();
         }
         #[cfg(target_os = "linux")]
         {
@@ -75,8 +76,111 @@ fn save_and_open_ics(
     Ok(file_path.to_string_lossy().to_string())
 }
 
+fn validate_ics_filename(filename: &str) -> Result<(), String> {
+    if filename.is_empty() {
+        return Err("Calendar filename cannot be empty".to_string());
+    }
+    if filename.len() > 255 {
+        return Err("Calendar filename is too long".to_string());
+    }
+    if filename.trim() != filename || filename.contains('\0') {
+        return Err("Calendar filename contains invalid characters".to_string());
+    }
+    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+        return Err("Calendar filename must be a single safe basename".to_string());
+    }
+
+    let path = Path::new(filename);
+    if !path.is_relative()
+        || path.components().count() != 1
+        || !matches!(path.components().next(), Some(Component::Normal(_)))
+    {
+        return Err("Calendar filename must be a single safe basename".to_string());
+    }
+
+    let lower = filename.to_ascii_lowercase();
+    if !lower.ends_with(".ics") {
+        return Err("Calendar filename must use the .ics extension".to_string());
+    }
+    let stem = &filename[..filename.len() - 4];
+    if stem.is_empty() || stem.ends_with('.') || stem.ends_with(' ') {
+        return Err("Calendar filename has an invalid basename".to_string());
+    }
+
+    let device_name = stem
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if matches!(
+        device_name.as_str(),
+        "con"
+            | "prn"
+            | "aux"
+            | "nul"
+            | "com1"
+            | "com2"
+            | "com3"
+            | "com4"
+            | "com5"
+            | "com6"
+            | "com7"
+            | "com8"
+            | "com9"
+            | "lpt1"
+            | "lpt2"
+            | "lpt3"
+            | "lpt4"
+            | "lpt5"
+            | "lpt6"
+            | "lpt7"
+            | "lpt8"
+            | "lpt9"
+    ) {
+        return Err("Calendar filename uses a reserved device name".to_string());
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_ics_filename;
+
+    #[test]
+    fn accepts_a_safe_ics_basename() {
+        assert!(validate_ics_filename("meeting.ics").is_ok());
+    }
+
+    #[test]
+    fn rejects_path_traversal_and_non_ics_filenames() {
+        for filename in [
+            "../escape.ics",
+            "..\\\\escape.ics",
+            "/tmp/escape.ics",
+            "C:\\\\escape.ics",
+            "meeting.txt",
+            "meeting.ics\\0payload",
+        ] {
+            assert!(
+                validate_ics_filename(filename).is_err(),
+                "unsafe filename accepted: {filename}"
+            );
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    {
+        // Fix for WebKitGTK 2.42+ on Linux (Bazzite, Fedora, Ubuntu 24.04, Arch Wayland/EGL)
+        // Prevents: "Could not create default EGL display: EGL_BAD_PARAMETER. Aborting..."
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     let close_to_tray = Arc::new(AtomicBool::new(true));
     let close_to_tray_window = close_to_tray.clone();
 
