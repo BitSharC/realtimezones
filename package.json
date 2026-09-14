@@ -19,6 +19,7 @@
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "astro": "^7.3.2"
   },

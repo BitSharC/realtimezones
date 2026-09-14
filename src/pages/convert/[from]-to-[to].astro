@@ -364,10 +364,14 @@ const pageUrl = `https://realtimezones.com/convert/${fromKey}-to-${toKey}`;
 
 <!-- Custom Scoped Ticking engine for clock widgets -->
 <script>
+  import { getBrowserStorage } from '../../scripts/core/safe-storage';
+
+  const storage = getBrowserStorage();
+
   function updateConverterClocks() {
     let is24h = false;
     try {
-      const ws = localStorage.getItem('workspace');
+      const ws = storage.getItem('workspace');
       if (ws) {
         const data = JSON.parse(ws);
         is24h = data && data.timeFormat === '24h';

@@ -30,12 +30,22 @@ const MAX_WORKSPACES = 20;
 const MAX_CITIES_PER_WORKSPACE = 50;
 const MAX_NAME_LENGTH = 100;
 const MAX_ID_LENGTH = 50;
+export const MAX_WORKSPACE_JSON_BYTES = 256 * 1024;
 const SUPPORTED_WORKSPACE_VERSION = 1;
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001F\u007F]/;
+const SAFE_WORKSPACE_ID_PATTERN = /^[\p{L}\p{N}_-]+$/u;
 
 function hasUnsafePrototypeKeys(value: Record<string, unknown>): boolean {
   return ['__proto__', 'constructor', 'prototype'].some((key) =>
     Object.prototype.hasOwnProperty.call(value, key)
   );
+}
+
+function utf8ByteLength(value: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(value).byteLength;
+  }
+  return value.length;
 }
 
 /**
@@ -59,6 +69,10 @@ export function validateWorkspaceData(data: unknown): WorkspaceValidationResult 
 
   if (!data || typeof data !== 'object') {
     return { success: false, error: 'Imported workspace data must be a valid JSON object or array' };
+  }
+
+  if (!Array.isArray(data) && hasUnsafePrototypeKeys(data as Record<string, unknown>)) {
+    return { success: false, error: 'Imported workspace data contains unsafe object keys' };
   }
 
   // Handle versioned envelopes, single workspace objects, or legacy arrays.
@@ -119,15 +133,32 @@ export function validateWorkspaceData(data: unknown): WorkspaceValidationResult 
       continue;
     }
     const cleanWsName = ws.name.trim();
+    if (CONTROL_CHARACTER_PATTERN.test(cleanWsName)) {
+      errors.push(`Workspace #${wIdx + 1} name contains control characters`);
+      continue;
+    }
     if (cleanWsName.length > MAX_NAME_LENGTH) {
       errors.push(`Workspace #${wIdx + 1} name exceeds maximum length of ${MAX_NAME_LENGTH} characters`);
       continue;
     }
 
-    // Validate workspace id
-    let wsId = typeof ws.id === 'string' && ws.id.trim() ? ws.id.trim() : `ws-${Date.now()}-${wIdx}`;
-    if (wsId.length > MAX_ID_LENGTH) {
-      wsId = wsId.slice(0, MAX_ID_LENGTH);
+    // Validate workspace id. Missing IDs are generated for legacy exports;
+    // supplied IDs must remain portable and unambiguous.
+    let wsId = `ws-${Date.now()}-${wIdx}`;
+    if (ws.id !== undefined) {
+      if (typeof ws.id !== 'string' || !ws.id.trim()) {
+        errors.push(`Workspace #${wIdx + 1} has an invalid ID`);
+        continue;
+      }
+      wsId = ws.id.trim();
+      if (
+        wsId.length > MAX_ID_LENGTH ||
+        CONTROL_CHARACTER_PATTERN.test(wsId) ||
+        !SAFE_WORKSPACE_ID_PATTERN.test(wsId)
+      ) {
+        errors.push(`Workspace #${wIdx + 1} has an invalid or unsafe ID`);
+        continue;
+      }
     }
     if (wsIdSet.has(wsId.toLowerCase())) {
       wsId = `${wsId}-${wIdx}`;
@@ -222,6 +253,13 @@ export function validateWorkspaceData(data: unknown): WorkspaceValidationResult 
 
       const country = canonicalCity.country;
       const flag = canonicalCity.flag || '📍';
+      if (
+        c.offsetHours !== undefined &&
+        (typeof c.offsetHours !== 'number' || !Number.isFinite(c.offsetHours) || Math.abs(c.offsetHours) > 24)
+      ) {
+        errors.push(`Workspace "${cleanWsName}": City #${cIdx + 1} has an invalid offset`);
+        continue;
+      }
       const isBase = c.isBase === true || cIdx === 0;
 
       validatedCities.push({
@@ -266,6 +304,12 @@ export function validateWorkspaceData(data: unknown): WorkspaceValidationResult 
 export function parseAndValidateWorkspaceJson(jsonString: string): WorkspaceValidationResult {
   if (!jsonString || typeof jsonString !== 'string') {
     return { success: false, error: 'Empty JSON content' };
+  }
+  if (utf8ByteLength(jsonString) > MAX_WORKSPACE_JSON_BYTES) {
+    return {
+      success: false,
+      error: `Workspace JSON exceeds the maximum size of ${MAX_WORKSPACE_JSON_BYTES} bytes`
+    };
   }
   try {
     const parsed = JSON.parse(jsonString);

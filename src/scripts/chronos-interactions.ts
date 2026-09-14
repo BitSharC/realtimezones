@@ -23,11 +23,39 @@ import {
 } from './core/city-registry.ts';
 import {
   escapeHtml,
-  parseAndValidateWorkspaceJson
+  parseAndValidateWorkspaceJson,
+  MAX_WORKSPACE_JSON_BYTES
 } from './core/workspace-validator.ts';
 import {
   sanitizeCalendarFilename
 } from './core/calendar-filename.ts';
+import {
+  DesktopSettingsOperationCoordinator,
+  applyTrayPreference,
+  readStoredBoolean,
+  resolveDesktopIntegrationBootState,
+  syncAutostartPreference,
+  validateDesktopIntegrationSelection,
+  isMobilePlatform,
+  type AutostartAdapter
+} from './core/desktop-settings.ts';
+import {
+  clientXToFocusHour,
+  focusHourToCenteredScrollLeft,
+  focusHourToTimelinePosition,
+  resolveTimelineGeometry,
+  shouldStartTimelineScrub,
+  type TimelineGeometry
+} from './core/responsive-timeline.ts';
+import {
+  getBrowserStorage
+} from './core/safe-storage.ts';
+import { parseBoundedInteger } from './core/url-input.ts';
+
+import { escapeIcsText } from './time-utils.ts';
+import { openAllowedExternalCalendarUrl } from './core/external-url.ts';
+
+const storage = getBrowserStorage();
 
 export interface CityTime {
   id: string;
@@ -301,11 +329,25 @@ export function getManualDateSelectionState(parts: DateParts) {
 let focusedWsIndex = 0;
 let focusedOmniIndex = 0;
 
-// Settings & Preferences State (Persisted in localStorage)
-let currentTheme = typeof window !== 'undefined' ? localStorage.getItem('chronos-theme') || 'midnight' : 'midnight';
-let workStartHour = typeof window !== 'undefined' ? parseInt(localStorage.getItem('chronos-work-start') || '8', 10) : 8;
-let workEndHour = typeof window !== 'undefined' ? parseInt(localStorage.getItem('chronos-work-end') || '18', 10) : 18;
-let scrubStepMinutes = typeof window !== 'undefined' ? parseInt(localStorage.getItem('chronos-scrub-step') || '15', 10) : 15;
+// Settings & Preferences State (Persisted in storage)
+const CHRONOS_THEMES = new Set(['midnight', 'oled', 'slate', 'charcoal']);
+
+function readStoredHour(key: string, fallback: number): number {
+  const raw = storage.getItem(key);
+  if (!raw || !/^\d+(?:\.\d+)?$/.test(raw)) return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 && value < 24 ? value : fallback;
+}
+
+function readStoredStep(key: string, fallback: number): number {
+  return parseBoundedInteger(storage.getItem(key), 1, 120) ?? fallback;
+}
+
+const storedTheme = storage.getItem('chronos-theme');
+let currentTheme = storedTheme && CHRONOS_THEMES.has(storedTheme) ? storedTheme : 'midnight';
+let workStartHour = readStoredHour('chronos-work-start', 8);
+let workEndHour = readStoredHour('chronos-work-end', 18);
+let scrubStepMinutes = readStoredStep('chronos-scrub-step', 15);
 
 export function initChronosDesktop() {
   const now = new Date();
@@ -315,13 +357,13 @@ export function initChronosDesktop() {
 
   // Load or initialize workspaces
   if (typeof window !== 'undefined') {
-    const savedWs = localStorage.getItem('rtz-workspaces-v3');
+    const savedWs = storage.getItem('rtz-workspaces-v3');
     if (savedWs) {
       try {
         const valResult = parseAndValidateWorkspaceJson(savedWs);
         if (valResult.success && valResult.workspaces && valResult.workspaces.length > 0) {
           WORKSPACES = valResult.workspaces;
-          const savedActiveId = localStorage.getItem('rtz-active-workspace-id');
+          const savedActiveId = storage.getItem('rtz-active-workspace-id');
           if (savedActiveId && WORKSPACES.some((w) => w.id === savedActiveId)) {
             activeWorkspaceId = savedActiveId;
           } else {
@@ -456,6 +498,7 @@ export function initChronosDesktop() {
   const importJsonInput = document.getElementById('chronos-input-import-json') as HTMLInputElement | null;
   const settingToggleMenubar = document.getElementById('setting-toggle-menubar') as HTMLInputElement | null;
   const settingToggleAutostart = document.getElementById('setting-toggle-autostart') as HTMLInputElement | null;
+  const settingAutostartStatus = document.getElementById('setting-autostart-status');
 
   // Unified Raycast Omnibar Modal DOM
   const commandPaletteModal = document.getElementById('chronos-command-modal');
@@ -517,6 +560,129 @@ export function initChronosDesktop() {
       return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
     }
     return Promise.resolve(fallbackCopy(text));
+  }
+
+  const AUTOSTART_STORAGE_KEY = 'rtz-setting-autostart';
+  const desktopSettingsOperations = new DesktopSettingsOperationCoordinator();
+  let autostartControlAvailable = false;
+
+  function setDesktopSettingsBusy(busy: boolean) {
+    if (saveSettingsBtn instanceof HTMLButtonElement) saveSettingsBtn.disabled = busy;
+    if (settingToggleMenubar) settingToggleMenubar.disabled = busy;
+    if (settingToggleAutostart) {
+      settingToggleAutostart.disabled = busy || !autostartControlAvailable;
+    }
+  }
+
+  function isNativeDesktopRuntime(): boolean {
+    const runtimeWindow = window as typeof window & {
+      __TAURI__?: unknown;
+      __TAURI_INTERNALS__?: unknown;
+    };
+    const browserNavigator = typeof navigator !== 'undefined' ? navigator : null;
+    const isTauriRuntime = Boolean(runtimeWindow.__TAURI__ || runtimeWindow.__TAURI_INTERNALS__);
+    return isTauriRuntime && !isMobilePlatform(
+      browserNavigator?.userAgent ?? '',
+      browserNavigator?.platform ?? '',
+      browserNavigator?.maxTouchPoints ?? 0
+    );
+  }
+
+  function getErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message) return error.message;
+    return typeof error === 'string' && error ? error : 'Unknown native integration error';
+  }
+
+  function setAutostartStatus(
+    message: string,
+    tone: 'muted' | 'success' | 'error' | 'pending' = 'muted'
+  ) {
+    if (!settingAutostartStatus) return;
+    settingAutostartStatus.textContent = message;
+    settingAutostartStatus.classList.remove(
+      'text-zinc-500',
+      'text-emerald-400',
+      'text-rose-400',
+      'text-amber-400'
+    );
+    settingAutostartStatus.classList.add(
+      tone === 'success'
+        ? 'text-emerald-400'
+        : tone === 'error'
+          ? 'text-rose-400'
+          : tone === 'pending'
+            ? 'text-amber-400'
+            : 'text-zinc-500'
+    );
+  }
+
+  async function getAutostartAdapter(): Promise<AutostartAdapter | null> {
+    if (!isNativeDesktopRuntime()) return null;
+    const autostart = await import('@tauri-apps/plugin-autostart');
+    return {
+      isEnabled: autostart.isEnabled,
+      enable: autostart.enable,
+      disable: autostart.disable
+    };
+  }
+
+  async function refreshAutostartState() {
+    if (!settingToggleAutostart) return;
+    const operationToken = desktopSettingsOperations.beginRefresh();
+    if (operationToken === null) return;
+    setDesktopSettingsBusy(true);
+
+    const storedEnabled = readStoredBoolean(storage, AUTOSTART_STORAGE_KEY, false);
+    settingToggleAutostart.checked = storedEnabled;
+
+    try {
+      const adapter = await getAutostartAdapter();
+      if (!desktopSettingsOperations.isCurrent(operationToken)) return;
+      if (!adapter) {
+        autostartControlAvailable = false;
+        settingToggleAutostart.checked = false;
+        setAutostartStatus('Available in the installed desktop app', 'muted');
+        return;
+      }
+
+      const nativeEnabled = await adapter.isEnabled();
+      if (!desktopSettingsOperations.isCurrent(operationToken)) return;
+      autostartControlAvailable = true;
+      settingToggleAutostart.checked = nativeEnabled;
+      storage.setItem(AUTOSTART_STORAGE_KEY, nativeEnabled.toString());
+      setAutostartStatus(
+        nativeEnabled ? 'Enabled — starts quietly at login' : 'Off — the app will not launch at login',
+        nativeEnabled ? 'success' : 'muted'
+      );
+    } catch (error) {
+      if (!desktopSettingsOperations.isCurrent(operationToken)) return;
+      autostartControlAvailable = false;
+      setAutostartStatus(`Unable to read native autostart state: ${getErrorMessage(error)}`, 'error');
+    } finally {
+      desktopSettingsOperations.endRefresh(operationToken);
+      setDesktopSettingsBusy(false);
+    }
+  }
+
+  async function applyNativeTrayPreference(
+    enabled: boolean,
+    enableCloseToTray = true
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!isNativeDesktopRuntime()) return { success: true };
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      return applyTrayPreference(
+        {
+          setVisible: (visible) => invoke('set_tray_visible', { visible }),
+          setCloseToTray: (closeToTrayEnabled) =>
+            invoke('set_close_to_tray', { enabled: closeToTrayEnabled })
+        },
+        enabled,
+        { enableCloseToTray }
+      );
+    } catch (error) {
+      return { success: false, error: getErrorMessage(error) };
+    }
   }
 
   function formatTime(hourFloat: number, is24: boolean): string {
@@ -912,14 +1078,14 @@ export function initChronosDesktop() {
           <div class="chronos-row-draggable h-[120px] border-b border-[#202024] flex items-stretch transition-all duration-150 relative select-none" id="row-${escapeHtml(city.id)}" data-city-id="${escapeHtml(city.id)}">
             <!-- Left City Card with Hover Actions (Draggable Card) -->
             <div class="chronos-city-card w-[280px] p-5 flex flex-col justify-between border-r border-[#202024] bg-[#0c0c0f] shrink-0 cursor-grab active:cursor-grabbing relative select-none" data-city-id="${escapeHtml(city.id)}">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2 min-w-0">
+              <div class="chronos-city-header flex items-center justify-between">
+                <div class="chronos-city-identity flex items-center gap-2 min-w-0">
                   <span class="text-base leading-none shrink-0">${escapeHtml(city.flag)}</span>
                   <span class="text-sm font-semibold text-white tracking-tight truncate">${escapeHtml(city.name)}</span>
                 </div>
 
                 <!-- Hover Actions: Shift Up, Shift Down, Delete (Revealed on card hover) -->
-                <div class="flex items-center gap-0.5 shrink-0">
+                <div class="chronos-city-actions flex items-center gap-0.5 shrink-0">
                   <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 mr-0.5">
                     ${escapeHtml(badge)}
                   </span>
@@ -954,19 +1120,19 @@ export function initChronosDesktop() {
               </div>
 
               <!-- Clock Display -->
-              <div id="clock-${escapeHtml(city.id)}" class="font-mono text-3xl font-bold tracking-tight text-white pointer-events-none">
+              <div id="clock-${escapeHtml(city.id)}" class="chronos-city-clock font-mono text-3xl font-bold tracking-tight text-white pointer-events-none">
                 --:--
               </div>
 
               <!-- Status Dot and Label -->
-              <div class="flex items-center gap-1.5 text-xs text-zinc-400 font-mono pointer-events-none">
+              <div class="chronos-city-status flex items-center gap-1.5 text-xs text-zinc-400 font-mono pointer-events-none">
                 <span id="dot-${escapeHtml(city.id)}" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
                 <span id="status-${escapeHtml(city.id)}">${escapeHtml(statusLabel)}</span>
               </div>
             </div>
 
             <!-- Right 24-Hour Bento Timeline -->
-            <div class="flex-1 grid grid-cols-[repeat(24,minmax(0,1fr))] h-full bg-[#0a0a0c]">
+            <div class="chronos-timeline-grid flex-1 grid grid-cols-[repeat(24,minmax(0,1fr))] h-full bg-[#0a0a0c]">
               ${timelineBlocks}
             </div>
           </div>
@@ -1029,7 +1195,7 @@ export function initChronosDesktop() {
 
       card.addEventListener('mousedown', (e) => e.stopPropagation());
       card.addEventListener('pointerdown', (e: PointerEvent) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || e.pointerType === 'touch') return;
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a') || target.closest('input')) return;
 
@@ -1184,8 +1350,8 @@ export function initChronosDesktop() {
 
   function saveWorkspacesToStorage() {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('rtz-workspaces-v3', JSON.stringify(WORKSPACES));
-      localStorage.setItem('rtz-active-workspace-id', activeWorkspaceId);
+      storage.setItem('rtz-workspaces-v3', JSON.stringify(WORKSPACES));
+      storage.setItem('rtz-active-workspace-id', activeWorkspaceId);
     }
   }
 
@@ -1799,33 +1965,7 @@ export function initChronosDesktop() {
 
   // Cross-Platform External Browser URL Opener (Works inside Tauri Desktop & Web)
   function openExternalBrowserUrl(url: string) {
-    try {
-      const tauri = (window as any).__TAURI__;
-      if (tauri && tauri.opener && typeof tauri.opener.openUrl === 'function') {
-        tauri.opener.openUrl(url);
-        return;
-      }
-    } catch (_) {}
-
-    try {
-      const tauri = (window as any).__TAURI__;
-      if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
-        tauri.core.invoke('plugin:opener|open_url', { url });
-        return;
-      }
-    } catch (_) {}
-
-    try {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (_) {
-      window.open(url, '_blank');
-    }
+    openAllowedExternalCalendarUrl(url);
   }
 
   function resolveSelectedStartInstant(baseTimezone: string): Date | null {
@@ -1950,7 +2090,7 @@ export function initChronosDesktop() {
       }),
       '',
       'https://realtimezones.com'
-    ].join('\\n');
+    ].join(String.fromCharCode(10));
 
     const icsContent = [
       'BEGIN:VCALENDAR',
@@ -1963,8 +2103,8 @@ export function initChronosDesktop() {
       `DTSTAMP:${startIso}`,
       `DTSTART:${startIso}`,
       `DTEND:${endIso}`,
-      `SUMMARY:Team Sync (${ws.name})`,
-      `DESCRIPTION:${description}`,
+      `SUMMARY:Team Sync (${escapeIcsText(ws.name)})`,
+      `DESCRIPTION:${escapeIcsText(description)}`,
       'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR',
@@ -2450,6 +2590,54 @@ export function initChronosDesktop() {
     });
   }
 
+  function getRenderedTimelineGeometry(): TimelineGeometry | null {
+    if (!canvasContainer) return null;
+
+    const cityCard = cityRowsContainer?.querySelector<HTMLElement>('.chronos-city-card');
+    const timelineGrid = cityRowsContainer?.querySelector<HTMLElement>('.chronos-timeline-grid');
+    if (!cityCard || !timelineGrid) return null;
+
+    const cityColumnWidth = cityCard.getBoundingClientRect().width;
+    const timelineWidth = timelineGrid.getBoundingClientRect().width;
+    return resolveTimelineGeometry({
+      viewportWidth: canvasContainer.clientWidth,
+      contentWidth: cityColumnWidth + timelineWidth,
+      cityColumnWidth,
+      scrollLeft: canvasContainer.scrollLeft,
+    });
+  }
+
+  function updateTimelineFocusPosition() {
+    const geometry = getRenderedTimelineGeometry();
+    if (!geometry) return;
+
+    const position = focusHourToTimelinePosition(focusHour, geometry);
+    if (scrubberLine) {
+      scrubberLine.style.left = `${position.contentLeft}px`;
+      const inner = document.getElementById('chronos-canvas-inner') || canvasContainer;
+      if (inner) {
+        const totalH = Math.max(inner.scrollHeight, inner.clientHeight, 600);
+        scrubberLine.style.height = `${totalH}px`;
+      }
+    }
+    if (scrubberTag) {
+      scrubberTag.style.left = `${position.viewportLeft}px`;
+    }
+  }
+
+  function centerTimelineOnFocus() {
+    if (!canvasContainer || canvasContainer.scrollWidth <= canvasContainer.clientWidth) return;
+    const geometry = getRenderedTimelineGeometry();
+    if (!geometry) return;
+
+    canvasContainer.scrollLeft = focusHourToCenteredScrollLeft(
+      focusHour,
+      geometry,
+      canvasContainer.clientWidth
+    );
+    updateTimelineFocusPosition();
+  }
+
   // Update clocks, availability & intelligence panel
   function updateClocks() {
     const ws = getActiveWorkspace();
@@ -2531,28 +2719,7 @@ export function initChronosDesktop() {
     renderMenuBarGlance();
     syncTauriDesktopIntegration();
 
-    const container = canvasContainer || scrubberHeader;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      const leftOffset = 280;
-      const gridWidth = rect.width - leftOffset;
-      if (gridWidth > 0) {
-        const fraction = focusHour / 24;
-        const currentPx = leftOffset + fraction * gridWidth;
-
-        if (scrubberLine) {
-          scrubberLine.style.left = `${currentPx}px`;
-          const inner = document.getElementById('chronos-canvas-inner') || canvasContainer;
-          if (inner) {
-            const totalH = Math.max(inner.scrollHeight, inner.clientHeight, 600);
-            scrubberLine.style.height = `${totalH}px`;
-          }
-        }
-        if (scrubberTag) {
-          scrubberTag.style.left = `${currentPx}px`;
-        }
-      }
-    }
+    updateTimelineFocusPosition();
   }
 
   // --- Synchronize Live System Tray Hover Tooltip with Current Cities and Time ---
@@ -2582,12 +2749,14 @@ export function initChronosDesktop() {
 
     const tooltipText = lines.join('\n');
 
-    try {
-      const tauri = (window as any).__TAURI__;
-      if (tauri && tauri.core && tauri.core.invoke) {
-        tauri.core.invoke('update_tray_tooltip', { tooltip: tooltipText });
-      }
-    } catch (_) {}
+    const tauri = (window as any).__TAURI__;
+    if (tauri && tauri.core && tauri.core.invoke) {
+      void tauri.core
+        .invoke('update_tray_tooltip', { tooltip: tooltipText })
+        .catch((error: unknown) => {
+          console.warn(`Could not synchronize the system tray: ${getErrorMessage(error)}`);
+        });
+    }
   }
 
   // --- Dynamic Live Menu Bar Glance Rendering ---
@@ -2777,26 +2946,26 @@ export function initChronosDesktop() {
   let isDragging = false;
 
   function calculateHourFromX(clientX: number) {
-    const container = canvasContainer || scrubberHeader;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const leftOffset = 280;
-    const gridLeft = rect.left + leftOffset;
-    const gridWidth = rect.width - leftOffset;
-    if (gridWidth <= 0) return;
+    if (!canvasContainer) return;
+    const geometry = getRenderedTimelineGeometry();
+    if (!geometry) return;
+    const nextFocusHour = clientXToFocusHour({
+      clientX,
+      containerLeft: canvasContainer.getBoundingClientRect().left,
+      geometry,
+      stepMinutes: scrubStepMinutes,
+    });
+    if (nextFocusHour === null) return;
 
-    const rawX = clientX - gridLeft;
-    const clampedX = Math.max(0, Math.min(gridWidth, rawX));
-    const fraction = clampedX / gridWidth;
-
-    const stepMinutes = Math.max(1, scrubStepMinutes);
-    const totalMinutes = Math.round((fraction * 24 * 60) / stepMinutes) * stepMinutes;
-    focusHour = Math.min(23.75, Math.max(0, totalMinutes / 60));
+    focusHour = nextFocusHour;
     updateClocks();
   }
 
   function startDrag(e: MouseEvent | PointerEvent) {
     if (e.button !== 0) return;
+
+    const pointerType = 'pointerType' in e ? e.pointerType : 'mouse';
+    if (!shouldStartTimelineScrub(pointerType, e.currentTarget === scrubberHeader)) return;
 
     const target = e.target as HTMLElement | null;
     if (
@@ -2822,12 +2991,11 @@ export function initChronosDesktop() {
       return;
     }
 
-    const container = canvasContainer || scrubberHeader;
-    if (container) {
-      const rect = container.getBoundingClientRect();
-      if (e.clientX < rect.left + 280 && e.target !== scrubberTag) {
-        return;
-      }
+    const geometry = getRenderedTimelineGeometry();
+    if (canvasContainer && geometry) {
+      const rect = canvasContainer.getBoundingClientRect();
+      const timelineViewportLeft = rect.left + geometry.cityColumnWidth - geometry.scrollLeft;
+      if (e.clientX < timelineViewportLeft && e.target !== scrubberTag) return;
     }
 
     e.preventDefault();
@@ -2859,6 +3027,8 @@ export function initChronosDesktop() {
   window.addEventListener('pointermove', onMouseMove);
   window.addEventListener('mouseup', stopDrag);
   window.addEventListener('pointerup', stopDrag);
+  window.addEventListener('pointercancel', stopDrag);
+  window.addEventListener('blur', stopDrag);
 
   if (scrubberHeader) {
     scrubberHeader.addEventListener('mousedown', startDrag);
@@ -2868,6 +3038,7 @@ export function initChronosDesktop() {
   if (canvasContainer) {
     canvasContainer.addEventListener('mousedown', startDrag);
     canvasContainer.addEventListener('pointerdown', startDrag);
+    canvasContainer.addEventListener('scroll', updateTimelineFocusPosition, { passive: true });
   }
 
   // Mouse Wheel Scrubbing Support
@@ -2922,6 +3093,7 @@ export function initChronosDesktop() {
   // Window Resize
   window.addEventListener('resize', () => {
     updateClocks();
+    centerTimelineOnFocus();
   });
 
   // Snap to NOW
@@ -2955,6 +3127,7 @@ export function initChronosDesktop() {
     updateClocks();
     renderCityRows();
     updateMeetingQuality();
+    requestAnimationFrame(centerTimelineOnFocus);
   }
 
   if (btnNow) {
@@ -3046,32 +3219,38 @@ export function initChronosDesktop() {
       let h = 0;
       let m = 0;
       if (raw.includes(':')) {
-        const [hStr, mStr] = raw.split(':');
-        h = parseInt(hStr, 10);
-        m = parseInt(mStr, 10);
+        const parts = raw.split(':');
+        if (parts.length !== 2) return null;
+        h = Number(parts[0]);
+        m = Number(parts[1]);
       } else {
-        const floatVal = parseFloat(raw);
+        const floatVal = Number(raw);
+        if (!Number.isFinite(floatVal)) return null;
         h = Math.floor(floatVal);
         m = Math.round((floatVal - h) * 60);
       }
+      if (h < 1 || h > 12 || m < 0 || m > 59) return null;
       if (isPm && h < 12) h += 12;
       if (!isPm && h === 12) h = 0;
-      return (h + m / 60) % 24;
+      return h + m / 60;
     }
 
     // Matches e.g. "08:30", "17:00", "9:15"
     if (cleaned.includes(':')) {
-      const [hStr, mStr] = cleaned.split(':');
-      const h = parseInt(hStr, 10);
-      const m = parseInt(mStr, 10);
-      if (!isNaN(h) && !isNaN(m)) {
-        return (h + m / 60) % 24;
+      const timeMatch = cleaned.match(/^(\d{1,2}):(\d{1,2})$/);
+      if (!timeMatch) return null;
+      const h = Number(timeMatch[1]);
+      const m = Number(timeMatch[2]);
+      if (h >= 0 && h < 24 && m >= 0 && m < 60) {
+        return h + m / 60;
       }
+      return null;
     }
 
     // Matches e.g. "8", "17.5", "18"
-    const num = parseFloat(cleaned);
-    if (!isNaN(num) && num >= 0 && num <= 24) {
+    if (!/^\d+(?:\.\d+)?$/.test(cleaned)) return null;
+    const num = Number(cleaned);
+    if (Number.isFinite(num) && num >= 0 && num <= 24) {
       return num % 24;
     }
 
@@ -3087,8 +3266,9 @@ export function initChronosDesktop() {
   }
 
   function applyTheme(theme: string) {
+    if (!CHRONOS_THEMES.has(theme)) return;
     currentTheme = theme;
-    localStorage.setItem('chronos-theme', theme);
+    storage.setItem('chronos-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     document.body.setAttribute('data-theme', theme);
   }
@@ -3128,10 +3308,14 @@ export function initChronosDesktop() {
 
     // 4. Desktop & System Integration Toggles
     if (settingToggleMenubar) {
-      settingToggleMenubar.checked = localStorage.getItem('rtz-setting-menubar') !== 'false';
+      settingToggleMenubar.checked = storage.getItem('rtz-setting-menubar') !== 'false';
     }
     if (settingToggleAutostart) {
-      settingToggleAutostart.checked = localStorage.getItem('rtz-setting-autostart') !== 'false';
+      settingToggleAutostart.checked = readStoredBoolean(
+        storage,
+        'rtz-setting-autostart',
+        false
+      );
     }
   }
 
@@ -3146,6 +3330,7 @@ export function initChronosDesktop() {
     stagedWorkEnd = workEndHour;
     stagedScrubStep = scrubStepMinutes;
     renderSettingsModalUI();
+    void refreshAutostartState();
 
     if (settingsModal) {
       settingsModal.classList.remove('hidden');
@@ -3160,70 +3345,182 @@ export function initChronosDesktop() {
     }
   }
 
-  function saveAndApplySettings() {
-    // Read and parse manual inputs before saving
-    if (settingWorkStartText) {
-      const parsed = parseTimeStringToHour(settingWorkStartText.value);
-      if (parsed !== null) stagedWorkStart = parsed;
-    }
-    if (settingWorkEndText) {
-      const parsed = parseTimeStringToHour(settingWorkEndText.value);
-      if (parsed !== null) stagedWorkEnd = parsed;
-    }
-    if (settingStepCustom) {
-      const val = parseInt(settingStepCustom.value, 10);
-      if (!isNaN(val) && val >= 1 && val <= 120) {
-        stagedScrubStep = val;
-      }
-    }
+  async function saveAndApplySettings() {
+    const operationToken = desktopSettingsOperations.beginMutation();
+    if (operationToken === null) return;
+    setDesktopSettingsBusy(true);
 
-    // Apply staged settings to live state
-    currentTheme = stagedTheme;
-    workStartHour = stagedWorkStart;
-    workEndHour = stagedWorkEnd;
-    scrubStepMinutes = stagedScrubStep;
-
-    // Persist all settings
-    localStorage.setItem('chronos-theme', currentTheme);
-    localStorage.setItem('chronos-work-start', workStartHour.toString());
-    localStorage.setItem('chronos-work-end', workEndHour.toString());
-    localStorage.setItem('chronos-scrub-step', scrubStepMinutes.toString());
-
-    const isMenubarEnabled = settingToggleMenubar ? settingToggleMenubar.checked : true;
-    const isAutostartEnabled = settingToggleAutostart ? settingToggleAutostart.checked : true;
-
-    if (settingToggleMenubar) {
-      localStorage.setItem('rtz-setting-menubar', isMenubarEnabled.toString());
-    }
-    if (settingToggleAutostart) {
-      localStorage.setItem('rtz-setting-autostart', isAutostartEnabled.toString());
-    }
-
-    // Direct Native Desktop Integration (Tauri)
     try {
-      const tauri = (window as any).__TAURI__;
-      if (tauri && tauri.core && tauri.core.invoke) {
-        tauri.core.invoke('set_tray_visible', { visible: isMenubarEnabled });
-        tauri.core.invoke('set_close_to_tray', { enabled: isMenubarEnabled });
+      // Read and parse manual inputs before saving
+      if (settingWorkStartText) {
+        const parsed = parseTimeStringToHour(settingWorkStartText.value);
+        if (parsed !== null) stagedWorkStart = parsed;
       }
-    } catch (_) {}
+      if (settingWorkEndText) {
+        const parsed = parseTimeStringToHour(settingWorkEndText.value);
+        if (parsed !== null) stagedWorkEnd = parsed;
+      }
+      if (settingStepCustom) {
+        const val = parseBoundedInteger(settingStepCustom.value.trim(), 1, 120);
+        if (val !== null) {
+          stagedScrubStep = val;
+        }
+      }
 
-    // Update Header Menu Bar Glance Button
-    if (btnToggleMenubar) {
+      const isMenubarEnabled = settingToggleMenubar ? settingToggleMenubar.checked : true;
+      const previousMenubarEnabled = readStoredBoolean(
+        storage,
+        'rtz-setting-menubar',
+        true
+      );
+      const requestedAutostartEnabled = settingToggleAutostart
+        ? settingToggleAutostart.checked
+        : false;
+      const integrationSelection = validateDesktopIntegrationSelection(
+        isMenubarEnabled,
+        requestedAutostartEnabled
+      );
+      if (!integrationSelection.valid) {
+        setAutostartStatus(integrationSelection.error, 'error');
+        settingToggleAutostart?.focus();
+        return;
+      }
+
+      const rollbackTrayPreference = async () => {
+        const rollbackResult = await applyNativeTrayPreference(previousMenubarEnabled);
+        if (!rollbackResult.success) {
+          console.warn(`Could not roll back the system tray preference: ${rollbackResult.error}`);
+        }
+      };
+
+      let autostartAdapter: AutostartAdapter | null = null;
+      let previousNativeAutostartEnabled: boolean | null = null;
+      const rollbackAutostartPreference = async () => {
+        if (!autostartAdapter || previousNativeAutostartEnabled === null) return;
+        const rollbackResult = await syncAutostartPreference(
+          autostartAdapter,
+          previousNativeAutostartEnabled
+        );
+        if (!rollbackResult.success) {
+          console.warn(`Could not roll back autostart: ${rollbackResult.error}`);
+        }
+      };
+
+      const restoreAutostartPreferenceUi = () => {
+        if (previousNativeAutostartEnabled === null) return;
+        if (settingToggleAutostart) {
+          settingToggleAutostart.checked = previousNativeAutostartEnabled;
+        }
+        storage.setItem(
+          AUTOSTART_STORAGE_KEY,
+          previousNativeAutostartEnabled.toString()
+        );
+      };
+
+      setAutostartStatus('Applying desktop integration settings…', 'pending');
+      // Stage visibility with close-to-tray disabled. It is enabled only after
+      // autostart and every other native step has been verified.
+      const trayResult = await applyNativeTrayPreference(isMenubarEnabled, false);
+      if (!trayResult.success) {
+        await rollbackTrayPreference();
+        setAutostartStatus(`Could not update the system tray: ${trayResult.error}`, 'error');
+        return;
+      }
+
+      let verifiedAutostartEnabled = false;
+      try {
+        const adapter = await getAutostartAdapter();
+        if (adapter) {
+          autostartAdapter = adapter;
+          previousNativeAutostartEnabled = await adapter.isEnabled();
+          const result = await syncAutostartPreference(adapter, requestedAutostartEnabled);
+          if (!result.success || result.enabled === null) {
+            await rollbackAutostartPreference();
+            await rollbackTrayPreference();
+            restoreAutostartPreferenceUi();
+            setAutostartStatus(`Could not update autostart: ${result.error}`, 'error');
+            return;
+          }
+          autostartControlAvailable = true;
+          if (settingToggleAutostart) settingToggleAutostart.checked = result.enabled;
+          storage.setItem(AUTOSTART_STORAGE_KEY, result.enabled.toString());
+          verifiedAutostartEnabled = result.enabled;
+        } else if (isNativeDesktopRuntime()) {
+          autostartControlAvailable = false;
+          await rollbackTrayPreference();
+          setAutostartStatus('The installed desktop autostart service is unavailable', 'error');
+          return;
+        } else if (requestedAutostartEnabled) {
+          autostartControlAvailable = false;
+          await rollbackTrayPreference();
+          if (settingToggleAutostart) settingToggleAutostart.checked = false;
+          setAutostartStatus('Autostart is available only in the installed desktop app', 'error');
+          return;
+        }
+      } catch (error) {
+        autostartControlAvailable = false;
+        await rollbackAutostartPreference();
+        await rollbackTrayPreference();
+        restoreAutostartPreferenceUi();
+        setAutostartStatus(`Could not update autostart: ${getErrorMessage(error)}`, 'error');
+        return;
+      }
+
       if (isMenubarEnabled) {
-        btnToggleMenubar.classList.remove('hidden');
-        btnToggleMenubar.classList.add('flex');
-      } else {
-        btnToggleMenubar.classList.add('hidden');
-        btnToggleMenubar.classList.remove('flex');
+        const committedTrayResult = await applyNativeTrayPreference(true);
+        if (!committedTrayResult.success) {
+          await rollbackAutostartPreference();
+          await rollbackTrayPreference();
+          restoreAutostartPreferenceUi();
+          setAutostartStatus(
+            `Could not finalize the system tray: ${committedTrayResult.error}`,
+            'error'
+          );
+          return;
+        }
       }
-    }
 
-    // Apply live effects immediately
-    applyTheme(currentTheme);
-    renderCityRows();
-    updateClocks();
-    closeSettingsModal();
+      // Apply staged settings only after native integration has succeeded.
+      currentTheme = stagedTheme;
+      workStartHour = stagedWorkStart;
+      workEndHour = stagedWorkEnd;
+      scrubStepMinutes = stagedScrubStep;
+
+      storage.setItem('chronos-theme', currentTheme);
+      storage.setItem('chronos-work-start', workStartHour.toString());
+      storage.setItem('chronos-work-end', workEndHour.toString());
+      storage.setItem('chronos-scrub-step', scrubStepMinutes.toString());
+      storage.setItem('rtz-setting-menubar', isMenubarEnabled.toString());
+      storage.setItem(AUTOSTART_STORAGE_KEY, verifiedAutostartEnabled.toString());
+
+      setAutostartStatus(
+        verifiedAutostartEnabled
+          ? 'Enabled — starts quietly at login'
+          : isNativeDesktopRuntime()
+            ? 'Off — the app will not launch at login'
+            : 'Available in the installed desktop app',
+        verifiedAutostartEnabled ? 'success' : 'muted'
+      );
+
+      // Update Header Menu Bar Glance Button
+      if (btnToggleMenubar) {
+        if (isMenubarEnabled) {
+          btnToggleMenubar.classList.remove('hidden');
+          btnToggleMenubar.classList.add('flex');
+        } else {
+          btnToggleMenubar.classList.add('hidden');
+          btnToggleMenubar.classList.remove('flex');
+        }
+      }
+
+      applyTheme(currentTheme);
+      renderCityRows();
+      updateClocks();
+      closeSettingsModal();
+    } finally {
+      desktopSettingsOperations.endMutation(operationToken);
+      setDesktopSettingsBusy(false);
+    }
   }
 
   if (settingsBtn) {
@@ -3241,10 +3538,10 @@ export function initChronosDesktop() {
   if (resetDefaultsBtn) {
     resetDefaultsBtn.addEventListener('click', () => {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('chronos-workspaces');
-        localStorage.removeItem('chronos-active-workspace-id');
-        localStorage.removeItem('rtz-workspaces-v3');
-        localStorage.removeItem('rtz-active-workspace-id');
+        storage.removeItem('chronos-workspaces');
+        storage.removeItem('chronos-active-workspace-id');
+        storage.removeItem('rtz-workspaces-v3');
+        storage.removeItem('rtz-active-workspace-id');
       }
       const localBaseCity = detectUserLocalCity();
       WORKSPACES = [
@@ -3368,6 +3665,12 @@ export function initChronosDesktop() {
     importJsonInput.addEventListener('change', (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+      if (file.size > MAX_WORKSPACE_JSON_BYTES) {
+        alert(`Workspace import error:\nThe selected file is too large. Maximum size is ${Math.floor(MAX_WORKSPACE_JSON_BYTES / 1024)} KiB.`);
+        importJsonInput.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const rawContent = event.target?.result as string;
@@ -3486,7 +3789,7 @@ export function initChronosDesktop() {
       welcomeModal.classList.remove('flex');
     }
     if (typeof window !== 'undefined') {
-      localStorage.setItem('rtz-welcome-seen-v1', 'true');
+      storage.setItem('rtz-welcome-seen-v1', 'true');
     }
   }
 
@@ -3539,7 +3842,7 @@ export function initChronosDesktop() {
         introSplash.classList.remove('flex');
         introSplash.classList.add('hidden');
         if (typeof window !== 'undefined') {
-          localStorage.setItem('rtz-intro-seen-v1', 'true');
+          storage.setItem('rtz-intro-seen-v1', 'true');
         }
         if (onComplete) onComplete();
       }, 700);
@@ -3557,33 +3860,68 @@ export function initChronosDesktop() {
   renderWorkspaceList();
   renderCityRows();
   updateClocks();
+  requestAnimationFrame(centerTimelineOnFocus);
 
   // Initialize Desktop & System Integration Settings on Boot
   if (typeof window !== 'undefined') {
-    const isMenubarEnabled = localStorage.getItem('rtz-setting-menubar') !== 'false';
-    try {
-      const tauri = (window as any).__TAURI__;
-      if (tauri && tauri.core && tauri.core.invoke) {
-        tauri.core.invoke('set_tray_visible', { visible: isMenubarEnabled });
-        tauri.core.invoke('set_close_to_tray', { enabled: isMenubarEnabled });
-      }
-    } catch (_) {}
+    void (async () => {
+      const initializationToken = desktopSettingsOperations.beginInitialization();
+      if (initializationToken === null) return;
+      setDesktopSettingsBusy(true);
 
-    if (btnToggleMenubar) {
-      if (isMenubarEnabled) {
-        btnToggleMenubar.classList.remove('hidden');
-        btnToggleMenubar.classList.add('flex');
-      } else {
-        btnToggleMenubar.classList.add('hidden');
-        btnToggleMenubar.classList.remove('flex');
+      try {
+        const storedMenubarEnabled = storage.getItem('rtz-setting-menubar') !== 'false';
+        let nativeAutostartEnabled: boolean | null = false;
+        let startHiddenRequested = false;
+
+        if (isNativeDesktopRuntime()) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            startHiddenRequested = await invoke<boolean>('get_start_hidden');
+            const adapter = await getAutostartAdapter();
+            nativeAutostartEnabled = adapter ? await adapter.isEnabled() : null;
+          } catch (error) {
+            nativeAutostartEnabled = null;
+            console.warn(`Could not read desktop startup state during boot: ${getErrorMessage(error)}`);
+          }
+        }
+
+        const bootState = resolveDesktopIntegrationBootState(
+          storedMenubarEnabled,
+          nativeAutostartEnabled,
+          startHiddenRequested
+        );
+        if (bootState.repairedLegacyPreference) {
+          storage.setItem('rtz-setting-menubar', 'true');
+        }
+
+        const trayResult = await applyNativeTrayPreference(bootState.trayEnabled);
+        if (!trayResult.success) {
+          console.warn(`Could not restore the system tray preference: ${trayResult.error}`);
+        }
+
+        if (btnToggleMenubar) {
+          if (bootState.trayEnabled) {
+            btnToggleMenubar.classList.remove('hidden');
+            btnToggleMenubar.classList.add('flex');
+          } else {
+            btnToggleMenubar.classList.add('hidden');
+            btnToggleMenubar.classList.remove('flex');
+          }
+        }
+      } finally {
+        desktopSettingsOperations.endInitialization(initializationToken);
+        setDesktopSettingsBusy(false);
       }
-    }
+
+      await refreshAutostartState();
+    })();
   }
 
   // First-Time Launch Sequence (Intro Splash -> Welcome Modal)
   if (typeof window !== 'undefined') {
-    const hasSeenIntro = localStorage.getItem('rtz-intro-seen-v1');
-    const hasSeenWelcome = localStorage.getItem('rtz-welcome-seen-v1');
+    const hasSeenIntro = storage.getItem('rtz-intro-seen-v1');
+    const hasSeenWelcome = storage.getItem('rtz-welcome-seen-v1');
 
     if (!hasSeenIntro) {
       // First-ever launch: Play smooth SVG reveal once, then show welcome guide

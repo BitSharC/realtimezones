@@ -146,10 +146,13 @@ const canonicalUrl = "https://realtimezones.com/500";
 
 <!-- Foo-proof direct reset handler -->
 <script>
+  import { clearAppStorage, getBrowserStorage } from '../scripts/core/safe-storage.ts';
+
+  const appStorage = getBrowserStorage();
   document.getElementById('reset-workspace-btn-direct')?.addEventListener('click', () => {
     const confirmReset = confirm("Reset workspace? All added cities, settings, and favorites will be permanently cleared.");
     if (confirmReset) {
-      localStorage.clear();
+      clearAppStorage(appStorage);
       window.location.href = '/';
     }
   });

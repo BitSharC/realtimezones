@@ -1,16 +1,24 @@
-import { cities, type City } from '../data/cities';
+import { cities, type City } from '../data/cities.ts';
 
 export interface SearchResult extends City {
   score: number;
 }
+
+export const MAX_CITY_SEARCH_LENGTH = 100;
+export const MAX_CITY_SEARCH_RESULTS = 20;
 
 /**
  * Perform a fast, client-side fuzzy search on the static city database.
  * Returns results ranked by a match score and population.
  */
 export function searchCities(query: string, maxResults = 8): SearchResult[] {
+  if (typeof query !== 'string' || query.length > MAX_CITY_SEARCH_LENGTH) return [];
+
   const cleanQuery = query.trim().toLowerCase();
   if (!cleanQuery) return [];
+  const resultLimit = Number.isSafeInteger(maxResults)
+    ? Math.min(Math.max(maxResults, 1), MAX_CITY_SEARCH_RESULTS)
+    : 8;
 
   const results: SearchResult[] = [];
 
@@ -72,5 +80,5 @@ export function searchCities(query: string, maxResults = 8): SearchResult[] {
       }
       return b.population - a.population;
     })
-    .slice(0, maxResults);
+    .slice(0, resultLimit);
 }

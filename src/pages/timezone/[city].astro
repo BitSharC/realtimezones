@@ -398,10 +398,14 @@ const canonicalUrl = `https://realtimezones.com/timezone/${citySlug}`;
 
 <!-- Custom Scoped Ticking Engine for local clock widget -->
 <script>
+  import { getBrowserStorage } from '../../scripts/core/safe-storage';
+
+  const storage = getBrowserStorage();
+
   function updateTimezoneClock() {
     let is24h = false;
     try {
-      const ws = localStorage.getItem('workspace');
+      const ws = storage.getItem('workspace');
       if (ws) {
         const data = JSON.parse(ws);
         is24h = data && data.timeFormat === '24h';

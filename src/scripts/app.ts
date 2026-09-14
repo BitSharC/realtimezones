@@ -22,6 +22,9 @@ import {
 } from './time-utils';
 import { cities, type City } from '../data/cities';
 import { escapeHtml } from './core/workspace-validator';
+import { getBrowserStorage, clearAppStorage } from './core/safe-storage';
+import { parseBoundedInteger, parseSharedCityNames } from './core/url-input';
+import { openAllowedExternalCalendarUrl } from './core/external-url';
 
 // Country Name to ISO 3166-1 alpha-2 Code mapping for Cities
 const countryToIso: Record<string, string> = {
@@ -294,59 +297,80 @@ export interface WorkspaceData {
   lastUpdated: number;
 }
 
-function validateWorkspace(data: any): data is WorkspaceData {
-  if (!data || typeof data !== 'object') return false;
-  if (!Array.isArray(data.cities) || !data.cities.every((c: unknown) => typeof c === 'string')) return false;
-  if (!Array.isArray(data.favorites) || !data.favorites.every((f: unknown) => typeof f === 'string')) return false;
-  if (data.theme !== 'dark' && data.theme !== 'light' && data.theme !== 'system') return false;
-  if (data.timeFormat !== '12h' && data.timeFormat !== '24h') return false;
-  if (typeof data.duration !== 'number' || data.duration < 15 || data.duration > 1440) return false;
-  if (typeof data.focusTime !== 'number' || data.focusTime < 0 || data.focusTime > 23) return false;
-  if (typeof data.timelineScrollLeft !== 'number') return false;
-  if (typeof data.version !== 'number') return false;
+const MAX_HOME_WORKSPACE_ITEMS = 50;
+const MAX_HOME_WORKSPACE_TEXT_LENGTH = 128;
+const MAX_HOME_TIMELINE_SCROLL = 1_000_000;
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001F\u007F]/;
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+
+function validateWorkspace(data: unknown): data is WorkspaceData {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const candidate = data as Record<string, unknown>;
+  if (Object.keys(candidate).some((key) => UNSAFE_OBJECT_KEYS.has(key))) return false;
+
+  const isSafeString = (value: unknown): value is string =>
+    typeof value === 'string' &&
+    value.length <= MAX_HOME_WORKSPACE_TEXT_LENGTH &&
+    !CONTROL_CHARACTER_PATTERN.test(value);
+  const isSafeStringList = (value: unknown): value is string[] =>
+    Array.isArray(value) &&
+    value.length <= MAX_HOME_WORKSPACE_ITEMS &&
+    value.every((item) => isSafeString(item));
+
+  if (!isSafeStringList(candidate.cities) || !isSafeStringList(candidate.favorites)) return false;
+  if (candidate.theme !== 'dark' && candidate.theme !== 'light' && candidate.theme !== 'system') return false;
+  if (candidate.timeFormat !== '12h' && candidate.timeFormat !== '24h') return false;
+  if (typeof candidate.duration !== 'number' || !Number.isInteger(candidate.duration) || candidate.duration < 15 || candidate.duration > 1440) return false;
+  if (typeof candidate.focusTime !== 'number' || !Number.isInteger(candidate.focusTime) || candidate.focusTime < 0 || candidate.focusTime > 23) return false;
+  if (typeof candidate.timelineScrollLeft !== 'number' || !Number.isFinite(candidate.timelineScrollLeft) || candidate.timelineScrollLeft < 0 || candidate.timelineScrollLeft > MAX_HOME_TIMELINE_SCROLL) return false;
+  if (candidate.workingHours !== null) return false;
+  if (typeof candidate.version !== 'number' || candidate.version !== 1) return false;
+  if (typeof candidate.lastUpdated !== 'number' || !Number.isFinite(candidate.lastUpdated)) return false;
   return true;
 }
 
-function migrateWorkspace(): WorkspaceData | null {
-  const legacyStateStr = localStorage.getItem('rtz_state');
-  const legacyFavStr = localStorage.getItem('rtz_favorites');
-  const legacyTheme = localStorage.getItem('theme');
-  const legacyDur = localStorage.getItem('rtz_duration');
-  const legacyFormat = localStorage.getItem('rtz_format');
+function migrateWorkspace(storage: ReturnType<typeof getBrowserStorage>): WorkspaceData | null {
+  const legacyStateStr = storage.getItem('rtz_state');
+  const legacyFavStr = storage.getItem('rtz_favorites');
+  const legacyTheme = storage.getItem('theme');
+  const legacyDur = storage.getItem('rtz_duration');
+  const legacyFormat = storage.getItem('rtz_format');
 
   if (!legacyStateStr && !legacyFavStr && !legacyTheme && !legacyDur && !legacyFormat) {
     return null;
   }
 
+  const safeLegacyList = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value
+        .filter((item): item is string =>
+          typeof item === 'string' &&
+          item.length <= MAX_HOME_WORKSPACE_TEXT_LENGTH &&
+          !CONTROL_CHARACTER_PATTERN.test(item)
+        )
+        .slice(0, MAX_HOME_WORKSPACE_ITEMS)
+      : [];
+
   let citiesList: string[] = [];
   try {
     if (legacyStateStr) {
       const parsed = JSON.parse(legacyStateStr);
-      if (parsed && Array.isArray(parsed.cities)) {
-        citiesList = parsed.cities;
-      }
+      citiesList = safeLegacyList(parsed?.cities);
     }
   } catch (e) {}
 
   let favoritesList: string[] = [];
   try {
     if (legacyFavStr) {
-      const parsed = JSON.parse(legacyFavStr);
-      if (Array.isArray(parsed)) {
-        favoritesList = parsed;
-      }
+      favoritesList = safeLegacyList(JSON.parse(legacyFavStr));
     }
   } catch (e) {}
 
-  const theme = (legacyTheme as 'dark' | 'light' | 'system') || 'system';
+  const theme = legacyTheme === 'dark' || legacyTheme === 'light' || legacyTheme === 'system'
+    ? legacyTheme
+    : 'system';
 
-  let duration = 60;
-  if (legacyDur) {
-    const parsed = parseInt(legacyDur, 10);
-    if (!isNaN(parsed) && parsed >= 15 && parsed <= 1440) {
-      duration = parsed;
-    }
-  }
+  const duration = legacyDur ? (parseBoundedInteger(legacyDur, 15, 1440) ?? 60) : 60;
 
   const timeFormat = legacyFormat === '24h' ? '24h' : '12h';
 
@@ -364,11 +388,11 @@ function migrateWorkspace(): WorkspaceData | null {
   };
 
   // Clear legacy keys
-  localStorage.removeItem('rtz_state');
-  localStorage.removeItem('rtz_favorites');
-  localStorage.removeItem('theme');
-  localStorage.removeItem('rtz_duration');
-  localStorage.removeItem('rtz_format');
+  storage.removeItem('rtz_state');
+  storage.removeItem('rtz_favorites');
+  storage.removeItem('theme');
+  storage.removeItem('rtz_duration');
+  storage.removeItem('rtz_format');
 
   return data;
 }
@@ -390,6 +414,7 @@ function createFreshWorkspace(): WorkspaceData {
 
 class RealTimeZonesApp {
   // State
+  private readonly storage = getBrowserStorage();
   private homeTimezone: string;
   private selectedCities: City[] = [];
   private favoriteTimezones: Set<string> = new Set();
@@ -500,17 +525,17 @@ class RealTimeZonesApp {
 
   private loadState() {
     // 1. Determine if first visit
-    this.isFirstVisit = !localStorage.getItem('workspace') &&
-                         !localStorage.getItem('rtz_state') &&
-                         !localStorage.getItem('rtz_favorites') &&
-                         !localStorage.getItem('theme') &&
-                         !localStorage.getItem('rtz_duration') &&
-                         !localStorage.getItem('rtz_format');
+    this.isFirstVisit = !this.storage.getItem('workspace') &&
+                         !this.storage.getItem('rtz_state') &&
+                         !this.storage.getItem('rtz_favorites') &&
+                         !this.storage.getItem('theme') &&
+                         !this.storage.getItem('rtz_duration') &&
+                         !this.storage.getItem('rtz_format');
 
     // 2. Load workspace data (with migration and failsafe)
     let wsData: WorkspaceData | null = null;
     try {
-      const rawWs = localStorage.getItem('workspace');
+      const rawWs = this.storage.getItem('workspace');
       if (rawWs) {
         const parsed = JSON.parse(rawWs);
         if (validateWorkspace(parsed)) {
@@ -524,13 +549,13 @@ class RealTimeZonesApp {
         }
       } else {
         // Try migration from legacy keys
-        wsData = migrateWorkspace();
+        wsData = migrateWorkspace(this.storage);
         if (!wsData && this.isFirstVisit) {
           wsData = createFreshWorkspace();
         }
       }
     } catch (e) {
-      console.error('Error parsing workspace from localStorage. Creating fresh workspace.', e);
+      console.error('Error parsing workspace from this.storage. Creating fresh workspace.', e);
       wsData = createFreshWorkspace();
     }
 
@@ -554,11 +579,10 @@ class RealTimeZonesApp {
 
     // Load Cities
     if (urlCities) {
-      const cityList = urlCities.split(',');
+      const cityList = parseSharedCityNames(urlCities);
       this.selectedCities = [];
       for (const cityName of cityList) {
-        const decoded = decodeURIComponent(cityName);
-        const match = cities.find((c: City) => c.id.toLowerCase() === decoded.toLowerCase() || c.name.toLowerCase() === decoded.toLowerCase() || c.timezone === decoded);
+        const match = cities.find((c: City) => c.id.toLowerCase() === cityName.toLowerCase() || c.name.toLowerCase() === cityName.toLowerCase() || c.timezone === cityName);
         if (match && !this.selectedCities.some(existing => existing.id === match.id || (existing.name.toLowerCase() === match.name.toLowerCase() && existing.country.toLowerCase() === match.country.toLowerCase()))) {
           this.selectedCities.push(match);
         }
@@ -575,8 +599,8 @@ class RealTimeZonesApp {
 
     // Load Focus Hour
     if (urlFocus) {
-      const parsedFocus = parseInt(urlFocus, 10);
-      if (!isNaN(parsedFocus) && parsedFocus >= 0 && parsedFocus < 24) {
+      const parsedFocus = parseBoundedInteger(urlFocus, 0, 23);
+      if (parsedFocus !== null) {
         this.focusHour = parsedFocus;
       }
     } else {
@@ -592,8 +616,8 @@ class RealTimeZonesApp {
 
     // Load Duration
     if (urlDuration) {
-      const parsedDur = parseInt(urlDuration, 10);
-      if (!isNaN(parsedDur) && parsedDur >= 15 && parsedDur <= 1440) {
+      const parsedDur = parseBoundedInteger(urlDuration, 15, 1440);
+      if (parsedDur !== null) {
         this.meetingDurationMinutes = parsedDur;
       }
     } else {
@@ -653,9 +677,9 @@ class RealTimeZonesApp {
       lastUpdated: Date.now()
     };
     try {
-      localStorage.setItem('workspace', JSON.stringify(wsData));
+      this.storage.setItem('workspace', JSON.stringify(wsData));
     } catch (e) {
-      console.error('Failed to write to localStorage:', e);
+      console.error('Failed to write to this.storage:', e);
     }
     this.updateShareUrl();
   }
@@ -671,7 +695,7 @@ class RealTimeZonesApp {
 
   private updateShareUrl() {
     const params = new URLSearchParams();
-    params.set('cities', this.selectedCities.map(c => encodeURIComponent(c.name)).join(','));
+    params.set('cities', this.selectedCities.map(c => c.name).join(','));
     params.set('focus', this.focusHour.toString());
     params.set('date', formatDateOnly(this.selectedDateParts));
     params.set('duration', this.meetingDurationMinutes.toString());
@@ -897,10 +921,12 @@ class RealTimeZonesApp {
     // 8g. Custom hover tooltips
     this.setupTooltipListeners();
 
-    // 9. Keyboard Help Trigger
-    document.getElementById('trigger-keyboard-help')?.addEventListener('click', () => {
-      if (this.keyboardHelpModal) this.keyboardHelpModal.classList.remove('hidden');
-    });
+    // 9. Keyboard Help Triggers
+    for (const triggerId of ['trigger-keyboard-help', 'trigger-keyboard-help-footer']) {
+      document.getElementById(triggerId)?.addEventListener('click', () => {
+        if (this.keyboardHelpModal) this.keyboardHelpModal.classList.remove('hidden');
+      });
+    }
     if (this.keyboardHelpModal) {
       this.keyboardHelpModal.addEventListener('click', (e) => {
         if (e.target === this.keyboardHelpModal || (e.target as HTMLElement).closest('.close-modal')) {
@@ -1113,7 +1139,7 @@ class RealTimeZonesApp {
   }
 
   private confirmResetWorkspace() {
-    localStorage.removeItem('workspace');
+    clearAppStorage(this.storage);
     this.closeResetModal();
     window.location.href = window.location.pathname; // reload without query string parameters
   }
@@ -1516,9 +1542,9 @@ class RealTimeZonesApp {
     };
 
     if (type === 'google') {
-      window.open(generateGoogleCalendarUrl(details), '_blank');
+      openAllowedExternalCalendarUrl(generateGoogleCalendarUrl(details));
     } else if (type === 'outlook') {
-      window.open(generateOutlookCalendarUrl(details), '_blank');
+      openAllowedExternalCalendarUrl(generateOutlookCalendarUrl(details));
     } else if (type === 'ics' || type === 'apple') {
       const content = generateIcsContent(details);
       const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
@@ -1536,7 +1562,7 @@ class RealTimeZonesApp {
   // Theme settings
   private setTheme(theme: 'dark' | 'light' | 'system', save: boolean = false) {
     this.activeTheme = theme;
-    localStorage.setItem('theme', theme);
+    this.storage.setItem('theme', theme);
     
     const root = document.documentElement;
     if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

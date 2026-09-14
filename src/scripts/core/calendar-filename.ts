@@ -12,15 +12,34 @@ const WINDOWS_RESERVED = new Set([
   'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
 ]);
 
+const WINDOWS_SHELL_OR_PATH_CHARACTERS = '/:*?"<>|&;`$!^%()[]{}';
+const BACKSLASH = String.fromCharCode(92);
+
+function replaceUnsafeFilenameCharacters(input: string): string {
+  return Array.from(input, (character) => {
+    const code = character.charCodeAt(0);
+    if (code === 0) {
+      return '';
+    }
+    if (code < 32 || code === 127) {
+      return '-';
+    }
+    if (
+      character === BACKSLASH ||
+      WINDOWS_SHELL_OR_PATH_CHARACTERS.includes(character)
+    ) {
+      return '-';
+    }
+    return character;
+  }).join('');
+}
+
 function sanitizeCandidate(input: unknown): string {
   if (typeof input !== 'string' || !input) return '';
 
-  // Remove null bytes and controls, then flatten all path-like separators.
-  let sanitized = input
-    .replace(/[\r\n\t]+/g, '-')
-    .replace(/[\x00-\x1f\x7f-\x9f]/g, '')
-    .replace(/[/\\]+/g, '-')
-    .replace(/[<>:"|?*]+/g, '-')
+  // Remove controls and flatten path/shell metacharacters before any extension
+  // handling. This keeps the browser download and native opener contracts equal.
+  let sanitized = replaceUnsafeFilenameCharacters(input)
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
@@ -49,6 +68,24 @@ function sanitizeCandidate(input: unknown): string {
   }
 
   return `${sanitized}.ics`;
+}
+
+export function isSafeCalendarFilename(filename: string): boolean {
+  if (typeof filename !== 'string' || !filename || filename.length > 255) return false;
+  if (filename.trim() !== filename || !filename.toLowerCase().endsWith('.ics')) return false;
+  if (filename.includes('/') || filename.includes(BACKSLASH) || filename.includes('..')) return false;
+
+  const stem = filename.slice(0, -4);
+  if (!stem || stem.endsWith('.') || stem.endsWith(' ')) return false;
+  if (!Array.from(stem).every((character) => {
+    const code = character.charCodeAt(0);
+    return code >= 32 && code !== 127 &&
+      character !== BACKSLASH &&
+      !WINDOWS_SHELL_OR_PATH_CHARACTERS.includes(character);
+  })) return false;
+
+  const firstNamePart = stem.split('.')[0].toLowerCase();
+  return !WINDOWS_RESERVED.has(firstNamePart);
 }
 
 export function sanitizeCalendarFilename(

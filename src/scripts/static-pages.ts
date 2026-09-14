@@ -1,23 +1,32 @@
 import { searchCities } from './city-db';
 import { escapeHtml } from './core/workspace-validator';
+import { getBrowserStorage, clearAppStorage } from './core/safe-storage';
+import { findCityByTimezone } from './core/city-registry';
+
+const storage = getBrowserStorage();
 
 document.addEventListener('DOMContentLoaded', () => {
   // Theme Toggle Logic
-  let activeTheme = 'system';
+  type Theme = 'dark' | 'light' | 'system';
+  const ALLOWED_THEMES = new Set(['dark', 'light', 'system']);
+  const isAllowedTheme = (value: unknown): value is Theme =>
+    typeof value === 'string' && ALLOWED_THEMES.has(value);
+  let activeTheme: Theme = 'system';
   try {
-    const workspace = localStorage.getItem('workspace');
+    const workspace = storage.getItem('workspace');
     if (workspace) {
       const data = JSON.parse(workspace);
-      if (data && data.theme) {
+      if (data && isAllowedTheme(data.theme)) {
         activeTheme = data.theme;
       }
     } else {
-      const legacyTheme = localStorage.getItem('theme');
-      if (legacyTheme) activeTheme = legacyTheme;
+      const legacyTheme = storage.getItem('theme');
+      if (isAllowedTheme(legacyTheme)) activeTheme = legacyTheme;
     }
   } catch (e) {}
 
   function applyTheme(theme: string) {
+    if (!isAllowedTheme(theme)) return;
     activeTheme = theme;
     const root = document.documentElement;
     if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -28,14 +37,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Save theme
     try {
-      const wsRaw = localStorage.getItem('workspace');
+      const wsRaw = storage.getItem('workspace');
       let wsData = wsRaw ? JSON.parse(wsRaw) : null;
       if (wsData) {
         wsData.theme = theme;
-        localStorage.setItem('workspace', JSON.stringify(wsData));
+        storage.setItem('workspace', JSON.stringify(wsData));
       }
     } catch (e) {}
-    localStorage.setItem('theme', theme);
+    storage.setItem('theme', theme);
 
     // Sync button classes
     const buttons = document.querySelectorAll('.theme-btn');
@@ -97,14 +106,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Time Format Logic
   let is24HourFormat = false;
   try {
-    const workspace = localStorage.getItem('workspace');
+    const workspace = storage.getItem('workspace');
     if (workspace) {
       const data = JSON.parse(workspace);
       if (data && data.format24h !== undefined) {
-        is24HourFormat = data.format24h;
+        is24HourFormat = data.format24h === true;
       }
     } else {
-      is24HourFormat = localStorage.getItem('timeFormat') === '24h';
+      is24HourFormat = storage.getItem('timeFormat') === '24h';
     }
   } catch (e) {}
 
@@ -113,14 +122,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Save format
     try {
-      const wsRaw = localStorage.getItem('workspace');
+      const wsRaw = storage.getItem('workspace');
       let wsData = wsRaw ? JSON.parse(wsRaw) : null;
       if (wsData) {
         wsData.format24h = is24HourFormat;
-        localStorage.setItem('workspace', JSON.stringify(wsData));
+        storage.setItem('workspace', JSON.stringify(wsData));
       }
     } catch (e) {}
-    localStorage.setItem('timeFormat', is24HourFormat ? '24h' : '12h');
+    storage.setItem('timeFormat', is24HourFormat ? '24h' : '12h');
 
     // Sync UI
     const btn12h = document.getElementById('time-format-12h');
@@ -175,9 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const confirmReset = confirm("Reset workspace? All added cities, settings, and favorites will be permanently cleared.");
       if (confirmReset) {
-        localStorage.removeItem('workspace');
-        localStorage.removeItem('theme');
-        localStorage.removeItem('timeFormat');
+        clearAppStorage(storage);
         window.location.href = '/';
       }
     });
@@ -347,11 +354,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Handle city selection: add to workspace and redirect to /
-  function selectCity(timezone: string, name: string) {
+  function selectCity(timezone: string, _name: string) {
+    const canonicalCity = findCityByTimezone(timezone);
+    if (!canonicalCity) return;
+
     try {
-      const wsRaw = localStorage.getItem('workspace');
+      const wsRaw = storage.getItem('workspace');
       let wsData = wsRaw ? JSON.parse(wsRaw) : null;
-      if (!wsData) {
+      if (!wsData || typeof wsData !== 'object' || Array.isArray(wsData) || !Array.isArray(wsData.cities)) {
         // Create a default workspace
         wsData = {
           version: 1,
@@ -362,17 +372,17 @@ document.addEventListener('DOMContentLoaded', () => {
           focusTime: new Date().getHours()
         };
       }
-      // Add city if not present
-      if (!wsData.cities.includes(timezone)) {
-        wsData.cities.push(timezone);
+      // Add only canonical cities and keep persisted lists bounded.
+      if (!wsData.cities.includes(canonicalCity.timezone) && wsData.cities.length < 50) {
+        wsData.cities.push(canonicalCity.timezone);
       }
-      localStorage.setItem('workspace', JSON.stringify(wsData));
+      storage.setItem('workspace', JSON.stringify(wsData));
     } catch (e) {
       console.error('Failed to update workspace on selection: ', e);
     }
     
-    // Redirect to home page with the city selected
-    window.location.href = `/?cities=${encodeURIComponent(name)}`;
+    // Redirect to home page with canonical city text.
+    window.location.href = `/?cities=${encodeURIComponent(canonicalCity.name)}`;
   }
 
   // Keyboard navigation inside search results

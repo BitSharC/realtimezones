@@ -210,6 +210,33 @@ export function generateOutlookCalendarUrl(details: CalendarDetails): string {
 }
 
 /**
+ * Escapes RFC 5545 TEXT values. Newlines are represented as literal `\\n`
+ * sequences so user-controlled text cannot create additional iCalendar fields.
+ */
+export function escapeIcsText(value: string): string {
+  if (typeof value !== 'string') return '';
+
+  const slash = String.fromCharCode(92);
+  const lineFeed = String.fromCharCode(10);
+  const carriageReturn = String.fromCharCode(13);
+  const filtered = Array.from(value)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || code >= 32;
+    })
+    .join('');
+
+  return filtered
+    .split(slash).join(slash + slash)
+    .split(',').join(slash + ',')
+    .split(';').join(slash + ';')
+    .split(carriageReturn + lineFeed).join(slash + 'n')
+    .split(carriageReturn).join(slash + 'n')
+    .split(lineFeed).join(slash + 'n');
+}
+
+
+/**
  * Generate ICS (iCalendar) text string for file downloads
  */
 export function generateIcsContent(details: CalendarDetails): string {
@@ -217,9 +244,6 @@ export function generateIcsContent(details: CalendarDetails): string {
   const endDate = new Date(details.startDate.getTime() + details.durationMinutes * 60000);
   const end = formatCalendarDate(endDate);
   const stamp = formatCalendarDate(new Date());
-
-  // Escape special chars for ICS fields
-  const escapeText = (str: string) => str.replace(/[,;]/g, '\\$&').replace(/\n/g, '\\n');
 
   return [
     'BEGIN:VCALENDAR',
@@ -231,8 +255,8 @@ export function generateIcsContent(details: CalendarDetails): string {
     `DTSTAMP:${stamp}`,
     `DTSTART:${start}`,
     `DTEND:${end}`,
-    `SUMMARY:${escapeText(details.title)}`,
-    `DESCRIPTION:${escapeText(details.description)}`,
+    `SUMMARY:${escapeIcsText(details.title)}`,
+    `DESCRIPTION:${escapeIcsText(details.description)}`,
     'END:VEVENT',
     'END:VCALENDAR'
   ].join('\r\n');
