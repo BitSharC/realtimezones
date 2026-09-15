@@ -21,7 +21,7 @@ const getHourStatusClass = (localHour: number) => {
   <header id="chronos-toolbar" class="h-[52px] border-b border-[#202024] bg-[#0d0d10] px-5 flex items-center justify-between z-30 shrink-0">
     <!-- Left Navigation -->
     <div class="chronos-toolbar-primary flex items-center gap-3">
-      <!-- Icon-Only Brand Logo with Silky Clock-Hand Sweep Animation -->
+      <!-- Icon-Only Brand Logo -->
       <a 
         id="chronos-btn-logo"
         href="/" 
@@ -29,16 +29,7 @@ const getHourStatusClass = (localHour: number) => {
         title="RealTimeZones • Workspace"
         aria-label="RealTimeZones Home"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <!-- Outer Bezel -->
-          <circle cx="12" cy="12" r="10" class="opacity-90 group-hover:opacity-100 transition-opacity" />
-          <!-- Animated Hands (Minute + Hour) with Center Pivot -->
-          <g class="origin-[12px_12px] group-hover:rotate-[360deg] transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-            <line x1="12" y1="12" x2="12" y2="6" stroke-width="2.2" stroke-linecap="round" />
-            <line x1="12" y1="12" x2="16" y2="14" stroke-width="2" stroke-linecap="round" />
-            <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-          </g>
-        </svg>
+        <img data-brand-favicon src="/favicon.ico" alt="" width="16" height="16" class="w-4 h-4 rounded-[3px]" aria-hidden="true" />
       </a>
 
       <!-- Workspace Selector Dropdown Container -->
@@ -776,17 +767,10 @@ const getHourStatusClass = (localHour: number) => {
 >
   <div class="chronos-welcome-panel w-full max-w-[480px] rounded-2xl border border-[#27272e] bg-[#111115] text-white shadow-2xl p-6 sm:p-7 flex flex-col gap-6 relative overflow-hidden transform-gpu">
     
-    <!-- Top Center Branding & Animated Emblem -->
+    <!-- Top Center Branding -->
     <div class="flex flex-col items-center text-center gap-3">
       <div class="w-12 h-12 rounded-xl border border-[#27272e] bg-[#16161c] text-white flex items-center justify-center group shadow-md cursor-default">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10" class="opacity-90" />
-          <g class="origin-[12px_12px] group-hover:rotate-[360deg] transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
-            <line x1="12" y1="12" x2="12" y2="6" stroke-width="2.2" stroke-linecap="round" />
-            <line x1="12" y1="12" x2="16" y2="14" stroke-width="2" stroke-linecap="round" />
-            <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-          </g>
-        </svg>
+        <img data-brand-favicon src="/favicon.ico" alt="" width="24" height="24" class="w-6 h-6 rounded-[5px]" aria-hidden="true" />
       </div>
       <div class="flex flex-col gap-1">
         <h2 class="text-lg font-bold tracking-tight text-white">Welcome to RealTimeZones</h2>
@@ -863,35 +847,15 @@ const getHourStatusClass = (localHour: number) => {
   </div>
 </div>
 
-<!-- First-Run Cinematic Intro Splash Screen (Pure Native SVG Hardware-Accelerated Animation) -->
+<!-- First-Run Intro Splash Screen -->
 <div 
   id="chronos-intro-splash" 
   class="fixed inset-0 z-[100] w-screen h-screen bg-[#070709] hidden items-center justify-center select-none overflow-hidden transition-opacity duration-700 pointer-events-auto"
 >
   <div class="flex flex-col items-center gap-6 text-center select-none">
-    <!-- Clock Logo with Luminous Glow & Drawing Circle -->
+    <!-- Static Brand Favicon -->
     <div class="relative flex items-center justify-center">
-      <div class="absolute w-28 h-28 rounded-full bg-emerald-500/10 blur-2xl animate-pulse"></div>
-      <svg class="w-20 h-20 text-white relative z-10" viewBox="0 0 48 48" fill="none">
-        <!-- Outer Circle with Smooth Stroke Draw Animation -->
-        <circle 
-          cx="24" 
-          cy="24" 
-          r="20" 
-          stroke="white" 
-          stroke-width="3" 
-          stroke-linecap="round"
-          stroke-dasharray="130"
-          stroke-dashoffset="130"
-          class="animate-intro-circle"
-        />
-        <!-- Clock Hands with 360° Physics Sweep Animation -->
-        <g class="origin-[24px_24px] animate-intro-hands">
-          <line x1="24" y1="24" x2="24" y2="12" stroke="white" stroke-width="3.5" stroke-linecap="round" />
-          <line x1="24" y1="24" x2="33" y2="28" stroke="white" stroke-width="3" stroke-linecap="round" />
-          <circle cx="24" cy="24" r="2.5" fill="white" />
-        </g>
-      </svg>
+      <img data-brand-favicon src="/favicon.ico" alt="" width="80" height="80" class="w-20 h-20 rounded-2xl relative z-10" aria-hidden="true" />
     </div>
 
     <!-- Typography Reveal Lockup -->
@@ -903,28 +867,11 @@ const getHourStatusClass = (localHour: number) => {
 </div>
 
 <style is:global>
-  /* Intro Splash Pure SVG Animations */
-  @keyframes introCircleDraw {
-    0% { stroke-dashoffset: 130; opacity: 0; }
-    20% { opacity: 1; }
-    100% { stroke-dashoffset: 0; opacity: 1; }
-  }
-  @keyframes introHandsSweep {
-    0% { transform: rotate(0deg); opacity: 0; }
-    20% { opacity: 1; }
-    100% { transform: rotate(360deg); opacity: 1; }
-  }
   @keyframes introTextFade {
     0% { opacity: 0; transform: translateY(12px); }
     100% { opacity: 1; transform: translateY(0); }
   }
 
-  .animate-intro-circle {
-    animation: introCircleDraw 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  .animate-intro-hands {
-    animation: introHandsSweep 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards 0.2s;
-  }
   .animate-intro-text {
     animation: introTextFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.9s;
     opacity: 0;
