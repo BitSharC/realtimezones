@@ -12,7 +12,6 @@ import {
   getTimezoneOffset,
   formatOffset,
   formatUtcOffset,
-  getHourCategory,
   getParticipantStatusForMeeting,
   isInvalidCivilTimeError,
   generateGoogleCalendarUrl,
@@ -1011,11 +1010,8 @@ class RealTimeZonesApp {
   private setDuration(minutes: number) {
     this.meetingDurationMinutes = minutes;
     this.saveState();
-    this.updateFocusIndicatorPosition();
-    this.updateFocusReadout();
-    this.renderOverlapWidget();
-    this.updateDurationButtonsUI();
     this.updateDurationSliderUI();
+    this.render();
   }
 
   private updateDurationButtonsUI() {
@@ -2089,20 +2085,28 @@ class RealTimeZonesApp {
       const offset = getTimezoneOffset(city.timezone, dateAtHour);
       const localTime = new Date(dateAtHour.getTime() + offset * 60000);
       const localHour = localTime.getUTCHours();
-      const category = getHourCategory(localHour);
+      const localMinute = localTime.getUTCMinutes();
+      const category = getParticipantStatusForMeeting(
+        city.timezone,
+        this.selectedDateParts,
+        h,
+        this.meetingDurationMinutes,
+        this.homeTimezone
+      );
 
       const localDayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: city.timezone }).format(dateAtHour);
 
       let displayHour = localHour;
       let ampm = localHour >= 12 ? 'pm' : 'am';
       let dataLocalTime = '';
+      const formattedLocalMinute = localMinute.toString().padStart(2, '0');
       
       if (this.is24HourFormat) {
-        dataLocalTime = `${localHour.toString().padStart(2, '0')}:00`;
+        dataLocalTime = `${localHour.toString().padStart(2, '0')}:${formattedLocalMinute}`;
       } else {
         displayHour = localHour % 12;
         if (displayHour === 0) displayHour = 12;
-        dataLocalTime = `${displayHour}:00 ${ampm.toUpperCase()}`;
+        dataLocalTime = `${displayHour}:${formattedLocalMinute} ${ampm.toUpperCase()}`;
       }
 
       const formattedLocalHour = displayHour.toString().padStart(2, '0');
@@ -2129,12 +2133,12 @@ class RealTimeZonesApp {
       if (this.is24HourFormat) {
         hourBlock.innerHTML = `
           <span class="font-bold">${formattedLocalHour}</span>
-          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">:00</span>
+          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">:${formattedLocalMinute}</span>
         `;
       } else {
         hourBlock.innerHTML = `
           <span class="font-bold">${formattedLocalHour}</span>
-          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">${ampm}</span>
+          <span class="text-[10px] tracking-tighter opacity-60 mt-0.5">:${formattedLocalMinute}${ampm}</span>
         `;
       }
 

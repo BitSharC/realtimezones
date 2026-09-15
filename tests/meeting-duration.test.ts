@@ -1,5 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { type DateParts } from '../src/scripts/core/date-only.ts';
 import {
   type MeetingSlotInput,
@@ -7,6 +9,9 @@ import {
   getIntervalParticipantStatus,
   calculateBestMeetingSlots
 } from '../src/scripts/core/meeting-intelligence.ts';
+import { getTimelineIntervalRating } from '../src/scripts/chronos-interactions.ts';
+
+const webAppSource = readFileSync(resolve(process.cwd(), 'src/scripts/app.ts'), 'utf8');
 
 describe('Meeting Duration & Interval Intelligence', () => {
   const testDate: DateParts = { year: 2026, month: 6, day: 10 };
@@ -164,5 +169,66 @@ describe('Meeting Duration & Interval Intelligence', () => {
     if (slot16In120) {
       assert.strictEqual(slot16In120.allWorking, false);
     }
+  });
+
+  it('keeps timeline availability aligned with duration-aware recommendations', () => {
+    const date: DateParts = { year: 2026, month: 9, day: 14 };
+    const participants = [
+      { timezone: 'Asia/Kolkata' },
+      { timezone: 'Europe/London' },
+      { timezone: 'Asia/Tokyo' }
+    ];
+
+    const ranked = calculateBestMeetingSlots(date, 60, 'Asia/Kolkata', participants, 24);
+    const slot13 = ranked.find((slot) => slot.startHour === 13);
+    const slot14 = ranked.find((slot) => slot.startHour === 14);
+
+    assert.strictEqual(slot13?.allWorking, true, '13:00 is fully inside working hours for all three cities');
+    assert.strictEqual(slot14?.allWorking, false, '14:00 crosses Tokyo’s 18:00 work boundary');
+    assert.strictEqual(slot14?.ratings['Asia/Tokyo'], 'border');
+    assert.strictEqual(
+      getTimelineIntervalRating('Asia/Tokyo', 'Asia/Kolkata', date, 14 * 60, 60),
+      'border',
+      'the timeline must show the full meeting interval, not only its green start instant'
+    );
+    assert.deepStrictEqual(
+      ranked.slice(0, 3).map((slot) => slot.startHour),
+      [13, 12, 11]
+    );
+  });
+
+  it('uses duration-aware availability when coloring the public web timeline', () => {
+    const renderRowStart = webAppSource.indexOf('private renderRow(city: City, isHome: boolean)');
+    const renderRowEnd = webAppSource.indexOf('// Tooltip event handlers', renderRowStart);
+    const renderRowSource = webAppSource.slice(renderRowStart, renderRowEnd);
+
+    assert.notStrictEqual(renderRowStart, -1);
+    assert.notStrictEqual(renderRowEnd, -1);
+    assert.match(
+      renderRowSource,
+      /getParticipantStatusForMeeting\(\s*city\.timezone,\s*this\.selectedDateParts,\s*h,\s*this\.meetingDurationMinutes,\s*this\.homeTimezone\s*\)/
+    );
+    assert.doesNotMatch(renderRowSource, /getHourCategory\(localHour\)/);
+  });
+
+  it('preserves fractional timezone minutes in public web timeline cells', () => {
+    const renderRowStart = webAppSource.indexOf('private renderRow(city: City, isHome: boolean)');
+    const renderRowEnd = webAppSource.indexOf('// Tooltip event handlers', renderRowStart);
+    const renderRowSource = webAppSource.slice(renderRowStart, renderRowEnd);
+
+    assert.match(renderRowSource, /const localMinute = localTime\.getUTCMinutes\(\);/);
+    assert.match(renderRowSource, /const formattedLocalMinute = localMinute\.toString\(\)\.padStart\(2, '0'\);/);
+    assert.doesNotMatch(renderRowSource, /dataLocalTime = `\$\{localHour\.toString\(\)\.padStart\(2, '0'\)\}:00`/);
+    assert.match(renderRowSource, /\$\{formattedLocalMinute\}/);
+  });
+
+  it('repaints the public web timeline when duration presets change', () => {
+    const setterStart = webAppSource.indexOf('private setDuration(minutes: number)');
+    const setterEnd = webAppSource.indexOf('private updateDurationButtonsUI()', setterStart);
+    const setterSource = webAppSource.slice(setterStart, setterEnd);
+
+    assert.notStrictEqual(setterStart, -1);
+    assert.notStrictEqual(setterEnd, -1);
+    assert.match(setterSource, /this\.render\(\);/);
   });
 });

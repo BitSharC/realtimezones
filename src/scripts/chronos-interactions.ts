@@ -14,8 +14,10 @@ import {
 } from './core/timezone-engine.ts';
 import {
   type ParticipantWorkHours,
+  type ParticipantSlotRating,
   calculateBestMeetingSlots,
-  evaluateMeetingSlot
+  evaluateMeetingSlot,
+  getIntervalParticipantStatus
 } from './core/meeting-intelligence.ts';
 import {
   getCanonicalCities,
@@ -73,6 +75,26 @@ export interface Workspace {
   id: string;
   name: string;
   cities: CityTime[];
+}
+
+export function getTimelineIntervalRating(
+  participantTimezone: string,
+  baseTimezone: string,
+  date: DateParts,
+  startMinutes: number,
+  durationMinutes: number,
+  workStartMinutes: number = 8 * 60,
+  workEndMinutes: number = 18 * 60
+): ParticipantSlotRating {
+  return getIntervalParticipantStatus(
+    participantTimezone,
+    baseTimezone,
+    date,
+    startMinutes,
+    durationMinutes,
+    workStartMinutes,
+    workEndMinutes
+  );
 }
 
 // Canonical Global Cities Dataset across all 7 Continents
@@ -755,13 +777,11 @@ export function initChronosDesktop() {
     if (currentDateLabel) currentDateLabel.textContent = activeSelectedDate;
   }
 
-  function getHourStatusClass(localHour: number): string {
-    if (localHour >= workStartHour && localHour < workEndHour) {
+  function getTimelineRatingClass(rating: ParticipantSlotRating): string {
+    if (rating === 'working') {
       return 'bg-emerald-950/40 border-r border-emerald-900/30 hover:bg-emerald-900/60';
     }
-    const borderMorningStart = Math.max(0, workStartHour - 2);
-    const borderEveningEnd = Math.min(24, workEndHour + 4);
-    if ((localHour >= borderMorningStart && localHour < workStartHour) || (localHour >= workEndHour && localHour < borderEveningEnd)) {
+    if (rating === 'border') {
       return 'bg-amber-950/30 border-r border-amber-900/25 hover:bg-amber-900/50';
     }
     return 'bg-[#08080b] border-r border-[#14141a] hover:bg-zinc-900/60';
@@ -1055,7 +1075,16 @@ export function initChronosDesktop() {
             );
             const localHourFloat = projected.hour + projected.minute / 60;
             const localHour = Math.floor(localHourFloat);
-            const statusClass = getHourStatusClass(localHourFloat);
+            const intervalRating = getTimelineIntervalRating(
+              city.timezone,
+              baseCity.timezone,
+              currentActiveDateParts,
+              h * 60,
+              selectedMeetingDurationMinutes,
+              workStartHour * 60,
+              workEndHour * 60
+            );
+            const statusClass = getTimelineRatingClass(intervalRating);
             const localTime = formatTime(localHourFloat, is24Hour);
             timelineBlocks += `
               <div class="h-full transition-colors ${statusClass} flex flex-col justify-end p-1 select-none pointer-events-none" title="${localTime} ${escapeHtml(city.name)}">
@@ -1887,6 +1916,7 @@ export function initChronosDesktop() {
       });
     }
 
+    renderCityRows();
     updateMeetingQuality();
   }
 

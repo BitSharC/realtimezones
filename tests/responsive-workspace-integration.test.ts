@@ -95,4 +95,16 @@ describe('Phase 3B responsive workspace integration', () => {
     assert.match(workspaceSource, /\.chronos-city-card \.chronos-delete-btn[\s\S]*?visibility:\s*visible/);
     assert.match(workspaceSource, /\.chronos-delete-btn[\s\S]*?min-width:\s*44px/);
   });
+
+  it('repaints duration-aware timeline cells when meeting duration changes', () => {
+    const setterStart = scriptSource.indexOf('function setMeetingDuration(minutes: number)');
+    const setterEnd = scriptSource.indexOf('// Duration Pills selection', setterStart);
+    const setterSource = scriptSource.slice(setterStart, setterEnd);
+
+    assert.notStrictEqual(setterStart, -1);
+    assert.notStrictEqual(setterEnd, -1);
+    assert.match(setterSource, /selectedMeetingDurationMinutes\s*=/);
+    assert.match(setterSource, /renderCityRows\(\);/);
+    assert.match(setterSource, /renderCityRows\(\);[\s\S]*?updateMeetingQuality\(\);/);
+  });
 });
