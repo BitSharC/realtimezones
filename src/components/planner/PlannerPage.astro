@@ -1,0 +1,809 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../Header.astro";
+import CitySearch from "../CitySearch.astro";
+import KeyboardHelp from "../KeyboardHelp.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  url?: string;
+}
+
+const {
+  title = "RealTimeZones – Fast Interactive Timezone Visualizer",
+  description = "Coordinate meetings across global teams instantly. A minimalist, local-first interactive grid slider to calculate timezone differences without the friction.",
+  url = "https://realtimezones.com"
+} = Astro.props;
+
+const popularConversions = ["est-to-ist", "pst-to-ist", "gmt-to-est", "london-to-new-york"];
+const worldCities = ["london", "new-york", "tokyo", "seoul", "mumbai"];
+
+const capitalizeCity = (slug: string) => {
+  return slug
+    .split("-")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+---
+
+<Layout 
+  title={title}
+  description={description}
+  url={url}
+>
+  <!-- Global App Container -->
+  <div class="flex flex-col min-h-screen">
+    
+    <!-- Header component -->
+    <Header />
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-[1400px] w-full mx-auto px-4 md:px-8 py-8 flex flex-col gap-6 select-none">
+      
+      <!-- Hero / Title Section -->
+      <section class="flex flex-col md:flex-row md:items-end justify-between border-b border-zinc-200 dark:border-zinc-800 pb-6 gap-4">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+            Coordinate across time zones.
+          </h2>
+          <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-sans max-w-xl">
+            Instantly find the best meeting time across your global team. Visualize every time zone, discover overlapping working hours, and share meetings in seconds.
+          </p>
+        </div>
+        
+        <!-- Quick Action Triggers -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <a 
+            href="https://github.com/BitSharC/realtimezones/releases" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="inline-flex items-center gap-2 px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 font-medium text-sm rounded-md transition-all duration-150 shrink-0 group"
+            title="Download RealTimeZones native app for macOS, Windows & Linux"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Download App</span>
+            <span class="hidden sm:inline-block text-[10px] font-mono text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 px-1 py-0.2 rounded bg-zinc-50 dark:bg-zinc-950">Desktop</span>
+          </a>
+
+          <button 
+            type="button" 
+            class="trigger-add-city inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-md shadow-xs transition-colors duration-150 cursor-pointer shrink-0"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add City
+            <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 dark:bg-zinc-200 dark:text-zinc-600 border border-zinc-700 dark:border-zinc-300 shadow-2xs select-none">⌘K</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Dashboard Controls Section -->
+      <section class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-zinc-100/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800">
+        
+        <!-- Date Selector Actions -->
+        <div class="flex items-center gap-2">
+          <button 
+            type="button" 
+            id="prev-day" 
+            class="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Previous Day"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          
+          <button 
+            type="button" 
+            id="selected-date-label" 
+            class="px-4 py-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 cursor-pointer"
+            title="Select custom date"
+          >
+            Monday, Jul 13, 2026
+          </button>
+          
+          <input 
+            type="date" 
+            id="date-picker-input" 
+            class="hidden" 
+          />
+
+          <button 
+            type="button" 
+            id="next-day" 
+            class="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Next Day"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+
+          <button 
+            type="button" 
+            id="reset-now" 
+            class="px-3 py-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-lg font-medium text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer shrink-0"
+            title="Reset to current time"
+          >
+            Now
+          </button>
+        </div>
+
+        <!-- Scrubber Scroller slider controller -->
+        <div class="flex-grow max-w-md flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+          <div class="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto shrink-0">
+            <span class="text-xs font-mono text-zinc-400 dark:text-zinc-500 shrink-0">Focus Time:</span>
+            <span 
+              id="focus-time-readout" 
+              class="px-2 py-0.5 rounded text-xs font-mono bg-zinc-200/50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 shrink-0 border border-zinc-200/50 dark:border-zinc-800 order-last sm:order-none"
+            >
+              12:00
+            </span>
+          </div>
+          <input 
+            type="range" 
+            id="focus-scrubber" 
+            min="0" 
+            max="23" 
+            value="12" 
+            class="w-full sm:flex-1 sm:min-w-0 h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+          />
+        </div>
+
+      </section>
+
+      <!-- Main Scrubbing Timelines Grid -->
+      <section class="flex flex-col gap-2">
+        <div 
+          id="timeline-scroll-container" 
+          class="overflow-x-auto no-scrollbar border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 shadow-xs"
+        >
+          <div class="w-[1312px] sm:w-[1408px] shrink-0 relative">
+            
+            <!-- Hours scale header row -->
+            <div class="flex w-[1312px] sm:w-[1408px] shrink-0 h-10 border-b border-zinc-200 dark:border-zinc-800 items-center">
+              <div class="sticky left-0 w-40 sm:w-64 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-20 h-full border-r border-zinc-200 dark:border-zinc-800 flex items-center px-2 sm:px-4 font-mono text-[9px] text-zinc-400 dark:text-zinc-500 select-none uppercase tracking-wider">
+                Cities & Zones
+              </div>
+              <div id="timeline-headers" class="flex shrink-0 w-[1152px]">
+                <!-- Filled dynamically by JavaScript -->
+              </div>
+            </div>
+
+            <!-- Absolute Selection highlights -->
+            <!-- Columns: 48px width each, sticky left: 256px -->
+            <div 
+              id="focus-indicator" 
+              class="absolute top-10 bottom-0 pointer-events-none border-2 border-blue-500/50 bg-blue-500/5 rounded-md z-10 w-12 transition-all duration-75"
+            ></div>
+            
+            <!-- Current Time line (absolute) -->
+            <div 
+              id="current-time-line" 
+              class="absolute top-10 bottom-0 pointer-events-none w-[1.5px] bg-red-500 dark:bg-red-400 z-10 current-time-pulse"
+            >
+              <span class="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+            </div>
+
+            <!-- List rows container -->
+            <div 
+              id="timeline-rows" 
+              class="flex flex-col divide-y divide-zinc-200/50 dark:divide-zinc-800/30"
+            >
+              <!-- Filled dynamically by JavaScript -->
+            </div>
+
+          </div>
+        </div>
+        
+        <!-- Legend description -->
+        <div class="flex flex-wrap items-center justify-start sm:justify-end gap-2 sm:gap-4 px-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wide">
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-emerald-500/10 border border-emerald-500/20"></span>
+            <span>Working (8a - 6p)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-amber-500/10 border border-amber-500/20"></span>
+            <span>Border (6a-8a / 6p-10p)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded bg-red-500/5 border border-red-500/10"></span>
+            <span>Sleep (10p - 6a)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Smart Overlap Finder Widget & Calendar Export Card -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Smart Overlap Widget container -->
+        <div class="lg:col-span-2 bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between min-h-[140px]">
+          <div id="overlap-widget">
+            <!-- Loaded dynamically by Javascript -->
+          </div>
+        </div>
+
+        <!-- Action Export Card -->
+        <div class="bg-white dark:bg-zinc-950 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between gap-4 min-h-[160px]">
+          <div>
+            <h4 class="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Export Meeting Slot</h4>
+            
+            <!-- Meeting Duration Selection pills -->
+            <div class="mt-3">
+              <span class="text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1.5">Meeting Duration</span>
+              <div class="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 gap-0.5">
+                <button type="button" data-duration="30" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  30m
+                </button>
+                <button type="button" data-duration="60" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  1h
+                </button>
+                <button type="button" data-duration="90" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  90m
+                </button>
+                <button type="button" data-duration="120" class="duration-btn flex-1 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 text-center text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50">
+                  2h
+                </button>
+              </div>
+            </div>
+
+            <!-- Custom duration slider -->
+            <div class="mt-3.5 mb-2">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Custom Duration</span>
+                <input 
+                  type="text"
+                  id="duration-slider-value" 
+                  class="px-1.5 py-0.5 rounded-sm text-[10px] font-mono bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border border-zinc-200/50 dark:border-zinc-800/80 w-16 text-center font-bold focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-650 focus:border-zinc-400 dark:focus:ring-zinc-650 transition-all select-all cursor-text"
+                  value="1h"
+                  title="Type duration (e.g. 90, 1.5h, 1h 30m) & press Enter"
+                />
+              </div>
+              <input 
+                type="range" 
+                id="duration-slider" 
+                min="15" 
+                max="720" 
+                step="15" 
+                value="60" 
+                class="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+              />
+            </div>
+          </div>
+          
+          <!-- Dropdown triggers -->
+          <div class="relative w-full">
+            <button 
+              type="button" 
+              id="calendar-dropdown-button" 
+              class="w-full inline-flex items-center justify-between px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-100/50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium text-xs rounded-md shadow-2xs transition-all duration-150 cursor-pointer"
+            >
+              <span class="inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span class="calendar-label">Select Calendar</span>
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            
+            <!-- Dropdown Menu list -->
+            <div 
+              id="calendar-dropdown-menu" 
+              class="absolute right-0 bottom-full mb-1.5 w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-lg z-30 hidden overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-900 font-mono text-[11px]"
+            >
+              <button type="button" id="export-google" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>Google Calendar</span>
+              </button>
+              <button type="button" id="export-outlook" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>Outlook Calendar</span>
+              </button>
+              <button type="button" id="export-apple" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>Apple Calendar</span>
+              </button>
+              <button type="button" id="export-ics" class="w-full px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors cursor-pointer flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <span>ICS File</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- SEO Optimization Section -->
+    <section class="border-t border-[#262626] bg-[#0a0a0a] text-zinc-400 py-16 px-6 md:px-8 select-text">
+      <div class="max-w-[1400px] mx-auto">
+        <!-- Section Header -->
+        <div class="mb-12 max-w-3xl">
+          <h3 class="text-2xl md:text-3xl font-semibold tracking-tight text-white leading-tight">
+            Real Time Zones. The ultimate global meeting planner.
+          </h3>
+          <p class="text-sm text-zinc-400 mt-3 leading-relaxed font-sans">
+            Coordinate operations across international boundaries without timezone lookup friction. Explore our localized converter engine, built for remote-first teams and distributed agencies.
+          </p>
+        </div>
+
+        <!-- 3-Column Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          <!-- Column 1 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              How It Works: Scrubber Engine
+            </h4>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              To coordinate meetings across global teams without timezone friction, our interactive Timezone Converter and Meeting Planner utilizes a high-precision local-first slider engine. When you slide the visual hours scrubber, it dynamically projects matching local times across every configured city card in your active list. This is not a static grid; it is a live matrix that translates complex UTC offsets into simple, color-coded working hour windows.
+            </p>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              By visualizing hours as blocks—green for working times (8:00 AM to 6:00 PM), amber for border zones, and red for sleeping hours—you can instantly locate overlapping times. Whether aligning a world clock meeting planner for a team spread across San Francisco, London, and Tokyo, or scheduling a one-off world meeting planner session using our custom meeting planner time zone options, our tool removes the guesswork. Drag the scrubber, check the overlap indicator, select a duration, and copy the unified invite link.
+            </p>
+          </div>
+
+          <!-- Column 2 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              Why Teams Need Real-Time Sync
+            </h4>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              Traditional static timezone lists and table grids fail because they lack instant interactivity. Distributed organizations run on dynamic schedules, where time is fluid. Managing a team distributed across diverse regions requires an international meeting planner that adapts to daylight savings, customized shift patterns, and custom durations. A simple calendar invite doesn't solve the cognitive load of calculating timezone gaps.
+            </p>
+            <p class="text-xs text-zinc-400 leading-relaxed font-sans">
+              If you need to schedule a review using an ist to pst conversion, pst to ist conversion, or est to ist conversion, doing math on the fly is prone to errors. Our dynamic timezone converter calculator does the heavy lifting, providing an active visual matrix instead of static listings. By calculating overlap zones automatically, you minimize midnight wakeups and prevent scheduling meetings during team sleep cycles. For companies executing gmt to est conversion workflows daily, this layout turns a multi-step calendar chore into a single-second drag-and-drop sync.
+            </p>
+          </div>
+
+          <!-- Column 3 -->
+          <div class="flex flex-col gap-4 border border-[#262626] bg-[#000000] p-6 rounded-lg">
+            <h4 class="text-sm font-mono text-white font-semibold uppercase tracking-wider border-b border-[#262626] pb-3">
+              Frequently Asked Questions
+            </h4>
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  How do I accurately calculate the time gap between EST and IST?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  To execute an est to ist conversion accurately, slide the scrubber to your desired Eastern Standard Time (EST) and watch the Indian Standard Time (IST) card dynamically update. Alternatively, use our custom city conversion pages to inspect specific hourly differences.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  What is the easiest way to plan a meeting across three timezones?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Use our global meeting planner timeline grid. Add all three target cities using the time zone meeting planner search bar (<kbd class="px-1 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 border border-zinc-700">⌘K</kbd>). Then, slide the timeline scrubber until the highlighted column aligns with green working blocks for all three locations.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  Does the timezone converter calculator account for daylight savings?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Yes. Our database computes active local rules automatically. Whether you are analyzing a pacific time zone converter slot, looking up london time now, seoul time now, new-york time now, dubai time now, or tokyo time now, the engine factors in the exact current date rules in real time.
+                </p>
+              </div>
+              <div class="flex flex-col gap-1.5 border-t border-[#262626] pt-3">
+                <span class="text-xs font-semibold text-zinc-200 font-sans">
+                  How do I share meeting times with international clients?
+                </span>
+                <p class="text-[11px] text-zinc-400 leading-relaxed font-sans">
+                  Once you identify the sweet spot using our time and date meeting planner tool, choose a meeting duration and click "Export Meeting Slot" to generate invite templates instantly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-12 md:mt-16 border-t border-[#262626] w-full mb-12"></div>
+
+        <section class="max-w-6xl mx-auto px-2">
+          <h4 class="font-mono text-xs uppercase text-[#888888] tracking-widest mb-8">
+            Deep Dive & Advanced Tracking FAQ
+          </h4>
+
+          <div class="flex flex-col">
+            <!-- FAQ 1 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">What is a meeting planner?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                A meeting planner is a digital tool or software application designed to coordinate schedules among multiple participants, especially across different geographic locations and time zones. It visualizes overlapping availability to quickly find the most convenient meeting times.
+              </p>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">How to plan a meeting time?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                To plan a meeting time, identify the time zones of all attendees, look for overlapping working hours (typically between 8 AM and 6 PM local time), and select a duration. A visual time zone scrubber simplifies this by showing color-coded availability indicators for each person.
+              </p>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">Is India GMT or IST time zone?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                India operates under Indian Standard Time (IST), which is UTC/GMT +5:30. India does not observe daylight saving time (DST), meaning its offset remains constant throughout the year.
+              </p>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">How do I arrange a time for a meeting?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                Add the locations of all participants to a timezone converter, find a slot where everyone is in a working or waking window (green or amber zone), verify the date to account for local daylight saving transitions, and export the meeting details to standard calendar platforms like Google Calendar or Outlook.
+              </p>
+            </div>
+
+            <!-- FAQ 5 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">How to schedule a meeting in different time zones?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                Use an interactive world clock converter to line up timelines side-by-side. Avoid manually calculating offsets. Drag the hours timeline to see what time 10 AM in one city is in the other participants' locations, select the optimal overlap slot, and create a calendar invite.
+              </p>
+            </div>
+
+            <!-- FAQ 6 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">How to manage Teams across time zones?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                Manage distributed teams by setting clear expectations around synchronous vs. asynchronous work, establishing 'core collaboration hours' (e.g., a 2-hour daily window where time zones overlap), using visual timezone dashboards to respect sleep boundaries, and rotating meeting times so one region isn't consistently inconvenienced.
+              </p>
+            </div>
+
+            <!-- FAQ 7 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">What is my time zone gmt converter?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                A GMT (Greenwich Mean Time) converter is a tool that allows you to compare your current local time zone against GMT or UTC. By inputting your location, the converter identifies your active offset (e.g., GMT-5 or GMT+1) so you can easily translate times between different cities.
+              </p>
+            </div>
+
+            <!-- FAQ 8 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">What is gmt time zone converter?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                A GMT time zone converter is a utility that translates time between Greenwich Mean Time (the baseline time zone) and other regional time zones around the world. It serves as a universal reference point to ensure absolute coordination across global schedules.
+              </p>
+            </div>
+
+            <!-- FAQ 9 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">What is utc time zone converter?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                A UTC (Coordinated Universal Time) converter matches local times against Coordinated Universal Time. While GMT is a time zone, UTC is the standard on which all global time zones are regulated, adjusting for sub-second precision but sharing the exact same hourly time value.
+              </p>
+            </div>
+
+            <!-- FAQ 10 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">How to use time zone converter?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                To use a time zone converter, search for the cities or regions of your participants. Once added, view their timelines side-by-side. Slide or click on any hour to see the corresponding times in other locations instantly, making it easy to spot a mutually convenient time.
+              </p>
+            </div>
+
+            <!-- FAQ 11 -->
+            <div class="border-b border-[#1f1f1f] pb-6 mb-6">
+              <h5 class="text-[#ffffff] font-medium text-base mb-2">What is time zone converter?</h5>
+              <p class="text-[#888888] text-sm font-sans leading-relaxed">
+                A time zone converter is an interactive digital tool designed to translate time from one geographic region to another. Modern converters offer visual scrubbers, automatic daylight saving updates, and calendar integrations to make global scheduling frictionless.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- JSON-LD FAQ Schema -->
+        <script type="application/ld+json" is:inline>
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is a meeting planner?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>A meeting planner is a digital tool or software application designed to coordinate schedules among multiple participants, especially across different geographic locations and time zones. It visualizes overlapping availability to quickly find the most convenient meeting times.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How to plan a meeting time?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>To plan a meeting time, identify the time zones of all attendees, look for overlapping working hours (typically between 8 AM and 6 PM local time), and select a duration. A visual time zone scrubber simplifies this by showing color-coded availability indicators for each person.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is India GMT or IST time zone?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>India operates under Indian Standard Time (IST), which is UTC/GMT +5:30. India does not observe daylight saving time (DST), meaning its offset remains constant throughout the year.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I arrange a time for a meeting?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>Add the locations of all participants to a timezone converter, find a slot where everyone is in a working or waking window (green or amber zone), verify the date to account for local daylight saving transitions, and export the meeting details to standard calendar platforms like Google Calendar or Outlook.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How to schedule a meeting in different time zones?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>Use an interactive world clock converter to line up timelines side-by-side. Avoid manually calculating offsets. Drag the hours timeline to see what time 10 AM in one city is in the other participants' locations, select the optimal overlap slot, and create a calendar invite.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How to manage Teams across time zones?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>Manage distributed teams by setting clear expectations around synchronous vs. asynchronous work, establishing 'core collaboration hours' (e.g., a 2-hour daily window where time zones overlap), using visual timezone dashboards to respect sleep boundaries, and rotating meeting times so one region isn't consistently inconvenienced.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is my time zone gmt converter?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>A GMT (Greenwich Mean Time) converter is a tool that allows you to compare your current local time zone against GMT or UTC. By inputting your location, the converter identifies your active offset (e.g., GMT-5 or GMT+1) so you can easily translate times between different cities.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is gmt time zone converter?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>A GMT time zone converter is a utility that translates time between Greenwich Mean Time (the baseline time zone) and other regional time zones around the world. It serves as a universal reference point to ensure absolute coordination across global schedules.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is utc time zone converter?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>A UTC (Coordinated Universal Time) converter matches local times against Coordinated Universal Time. While GMT is a time zone, UTC is the standard on which all global time zones are regulated, adjusting for sub-second precision but sharing the exact same hourly time value.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How to use time zone converter?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>To use a time zone converter, search for the cities or regions of your participants. Once added, view their timelines side-by-side. Slide or click on any hour to see the corresponding times in other locations instantly, making it easy to spot a mutually convenient time.</p>"
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What is time zone converter?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "<p>A time zone converter is an interactive digital tool designed to translate time from one geographic region to another. Modern converters offer visual scrubbers, automatic daylight saving updates, and calendar integrations to make global scheduling frictionless.</p>"
+              }
+            }
+          ]
+        }
+        </script>
+      </div>
+    </section>
+
+    <!-- Footer Area -->
+    <footer class="border-t border-[#262626] bg-[#000000] text-sm text-[#888888] pt-12 pb-8 px-6 mt-auto">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-8 max-w-6xl mx-auto">
+        <!-- Column 1: Popular Conversions -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Popular Conversions</h3>
+          <div class="flex flex-col gap-2.5">
+            {popularConversions.map((slug) => (
+              <a 
+                href={`/convert/${slug}`} 
+                class="hover:text-[#ffffff] transition-colors duration-200 font-mono text-xs text-[#888888] w-fit"
+              >
+                {slug}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- Column 2: World Cities -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">World Cities</h3>
+          <div class="flex flex-col gap-2.5">
+            {worldCities.map((slug) => (
+              <a 
+                href={`/timezone/${slug}`} 
+                class="hover:text-[#ffffff] transition-colors duration-200 font-mono text-xs text-[#888888] w-fit"
+              >
+                {capitalizeCity(slug)}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <!-- Column 3: Company -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Company</h3>
+          <div class="flex flex-col gap-2.5">
+            <a 
+              href="/about" 
+              class="hover:text-white transition-colors duration-200 font-sans text-xs text-[#888888] w-fit"
+            >
+              About Us
+            </a>
+            <a 
+              href="/contact" 
+              class="hover:text-white transition-colors duration-200 font-sans text-xs text-[#888888] w-fit"
+            >
+              Contact Us
+            </a>
+            <a 
+              href="/privacy" 
+              class="hover:text-white transition-colors duration-200 font-sans text-xs text-[#888888] w-fit"
+            >
+              Privacy Policy
+            </a>
+            <a 
+              href="/terms" 
+              class="hover:text-white transition-colors duration-200 font-sans text-xs text-[#888888] w-fit"
+            >
+              Terms & Conditions
+            </a>
+          </div>
+        </div>
+
+        <!-- Column 4: Shortcuts -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Shortcuts</h3>
+          <div class="flex flex-col gap-2.5">
+            <button 
+              type="button" 
+              class="trigger-add-city hover:text-[#ffffff] transition-colors duration-200 cursor-pointer text-left text-xs font-mono text-[#888888] w-fit"
+            >
+              Search (⌘K)
+            </button>
+            <button 
+              type="button" 
+              id="trigger-keyboard-help-footer" 
+              class="hover:text-[#ffffff] transition-colors duration-200 cursor-pointer text-left text-xs font-mono text-[#888888] w-fit"
+            >
+              Shortcuts
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 5: Developer -->
+        <div class="flex flex-col gap-4">
+          <h3 class="text-white font-mono text-xs uppercase tracking-wider font-semibold">Developer</h3>
+          <div class="text-xs font-mono text-[#888888] flex flex-col gap-4">
+            <p class="whitespace-nowrap">Built with ❤️ by <a target="_blank" rel="noopener noreferrer" class="text-[#ffffff] hover:underline transition-colors duration-200">BitSharc</a></p>
+            <!-- Mobile-only Sponsor Section -->
+            <div class="flex flex-col gap-1 sm:hidden">
+              <p class="text-xs font-sans text-[#a1a1a1]">Found this tool helpful?</p>
+              <a 
+                href="https://ko-fi.com/bitsharc" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="inline-flex items-center gap-1.5 text-xs font-mono text-[#888888] hover:text-[#ffffff] bg-transparent hover:bg-zinc-900 border border-[#262626] hover:border-zinc-700 px-2.5 py-1 rounded-md transition-all duration-200 w-fit"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                Sponsor
+              </a>
+            </div>
+            <div class="flex flex-col gap-1">
+              <span class="text-[#666666]">More tools:</span>
+              <a 
+                href="https://courierprice.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="inline-flex items-center gap-1.5 text-xs font-mono text-[#888888] hover:text-[#ffffff] transition-colors duration-200 w-fit"
+              >
+                ↳ CourierPrice
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Full-Width Row -->
+      <div class="max-w-6xl mx-auto border-t border-[#222222] mt-8 pt-6">
+        <div class="flex flex-col md:flex-row justify-between text-xs text-[#666666] gap-4">
+          <span>© 2026 realtimezones.com. All rights reserved.</span>
+          <span>Blazing fast global coordination built on local-first privacy.</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Command search dialog -->
+  <CitySearch />
+
+  <!-- Keyboard Shortcuts reference modal -->
+  <KeyboardHelp />
+
+  <!-- Reset Workspace Confirmation Modal -->
+  <div 
+    id="reset-confirm-modal" 
+    class="fixed inset-0 z-50 bg-zinc-950/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 hidden transition-opacity duration-150"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="reset-confirm-title"
+    aria-describedby="reset-confirm-description"
+  >
+    <div 
+      class="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden p-6 animate-subtle"
+    >
+      <h3 id="reset-confirm-title" class="text-sm font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Reset Workspace?
+      </h3>
+      <p id="reset-confirm-description" class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 font-sans leading-relaxed">
+        This will remove:
+        <span class="block mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 italic">
+          • Saved cities<br />
+          • Preferences<br />
+          • Timeline state
+        </span>
+        <span class="block mt-2 font-medium">Your local timezone will remain.</span>
+      </p>
+
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          id="btn-confirm-cancel" 
+          class="flex-1 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 text-xs font-semibold rounded-md border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          id="btn-confirm-reset" 
+          class="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white text-xs font-bold rounded-md shadow-xs transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workspace Restored Toast -->
+  <div 
+    id="workspace-toast" 
+    class="fixed top-4 right-4 z-50 bg-zinc-900 border border-zinc-800 text-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 px-4 py-2.5 rounded-lg shadow-lg font-mono text-xs flex items-center gap-2 pointer-events-none transition-all duration-300 transform -translate-y-2 opacity-0"
+    role="status"
+    aria-live="polite"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Workspace restored
+  </div>
+
+  <!-- Global Tooltip Element -->
+  <div 
+    id="app-tooltip" 
+    class="fixed z-50 pointer-events-none opacity-0 scale-95 transition-all duration-[120ms] ease-out bg-zinc-900/95 dark:bg-zinc-950/95 border border-zinc-800 dark:border-zinc-800 text-zinc-100 p-2.5 rounded-lg shadow-lg font-mono text-[10px] leading-relaxed max-w-[200px]"
+  >
+  </div>
+</Layout>
+
+<!-- Client Orchestrator Scripts Bundle -->
+<script src="../../scripts/app.ts"></script>
