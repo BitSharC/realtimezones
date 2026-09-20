@@ -1,6 +1,5 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import Header from '../components/Header.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
 import CitySearch from '../components/CitySearch.astro';
 import KeyboardHelp from '../components/KeyboardHelp.astro';
 
@@ -9,196 +8,144 @@ const pageDescription = "Get in touch with the team behind RealTimeZones. We app
 const canonicalUrl = "https://realtimezones.com/contact";
 ---
 
-<Layout title={pageTitle} description={pageDescription} url={canonicalUrl}>
-  <div class="flex flex-col min-h-screen">
-    <!-- Header component -->
-    <Header />
+<MarketingLayout title={pageTitle} description={pageDescription} url={canonicalUrl} active="contact">
+  <div class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col gap-10 relative select-text">
 
-    <!-- Main Content Area -->
-    <main class="flex-grow max-w-[800px] w-full mx-auto px-4 md:px-8 py-16 flex flex-col gap-10 relative select-text">
-      
-      <!-- Atmospheric Mesh Gradient -->
-      <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div class="absolute top-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)]"></div>
-      </div>
+    <!-- Atmospheric Mesh Gradient -->
+    <div class="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div class="absolute top-[5%] left-1/2 -translate-x-1/2 w-[80%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(0,112,243,0.06)_0%,rgba(0,0,0,0)_70%)] dark:bg-[radial-gradient(circle,rgba(0,112,243,0.12)_0%,rgba(0,0,0,0)_70%)]"></div>
+    </div>
 
-      <!-- Section Header -->
-      <section class="flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-8">
-        <span class="font-mono text-xs text-[#888888] uppercase tracking-widest">Get In Touch</span>
-        <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
-          Contact Us.
-        </h1>
-        <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-2 font-sans leading-relaxed">
-          Have feedback, a feature request, or need help? Send us a message and we'll reply as soon as possible. You can also reach us directly at <a href="mailto:bitsharc.dev@gmail.com" class="text-zinc-900 dark:text-zinc-50 underline hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">bitsharc.dev@gmail.com</a>.
+    <!-- Section Header -->
+    <section class="flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-8">
+      <span class="font-mono text-xs text-[#888888] uppercase tracking-widest">Get In Touch</span>
+      <h1 class="text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 leading-tight">
+        Contact Us.
+      </h1>
+      <p class="text-sm md:text-base text-zinc-500 dark:text-zinc-400 mt-2 font-sans leading-relaxed">
+        Have feedback, a feature request, or need help? Send us a message and we'll reply as soon as possible. You can also reach us directly at <a href="mailto:bitsharc.dev@gmail.com" class="text-zinc-900 dark:text-zinc-50 underline hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">bitsharc.dev@gmail.com</a>.
+      </p>
+    </section>
+
+    <!-- Contact Form Container -->
+    <section class="w-full max-w-xl mx-auto">
+
+      <!-- Truthful Status Banner (Hidden by default) -->
+      <div
+        id="status-banner"
+        class="hidden bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 p-6 rounded-xl flex flex-col gap-3 font-sans mb-8 transition-all"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
+          <svg id="status-icon-check" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span id="status-title">Draft opened in your email client.</span>
+        </div>
+        <p id="status-description" class="text-sm text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
+          Your default email application was opened with a pre-filled draft. If your email app did not open, you can copy the message below.
         </p>
-      </section>
-
-      <!-- Contact Form Container -->
-      <section class="w-full max-w-xl mx-auto">
-        
-        <!-- Truthful Status Banner (Hidden by default) -->
-        <div
-          id="status-banner"
-          class="hidden bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 p-6 rounded-xl flex flex-col gap-3 font-sans mb-8 transition-all"
-          role="status"
-          aria-live="polite"
-        >
-          <div class="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-100">
-            <svg id="status-icon-check" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            <span id="status-title">Draft opened in your email client.</span>
-          </div>
-          <p id="status-description" class="text-sm text-emerald-800/90 dark:text-emerald-300/90 leading-relaxed">
-            Your default email application was opened with a pre-filled draft. If your email app did not open, you can copy the message below.
-          </p>
-          <textarea
-            id="clipboard-fallback-text"
-            class="hidden w-full min-h-32 p-3 bg-white/70 dark:bg-zinc-950/40 border border-emerald-500/20 rounded-lg text-xs font-mono text-zinc-700 dark:text-zinc-300 resize-y"
-            readonly
-            aria-label="Message to copy manually"
-          ></textarea>
-          <div class="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              type="button"
-              id="status-copy-btn"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              <span>Copy Message to Clipboard</span>
-            </button>
-            <button
-              type="button"
-              id="status-edit-btn"
-              class="px-4 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 underline cursor-pointer"
-            >
-              Edit message
-            </button>
-          </div>
-        </div>
-
-        <!-- The Contact Form -->
-        <form id="contact-form" class="flex flex-col gap-6 font-sans" novalidate>
-          
-          <div class="flex flex-col gap-1.5">
-            <label for="contact-name" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
-              Full Name
-            </label>
-            <input
-              type="text"
-              id="contact-name"
-              name="name"
-              placeholder="Your name"
-              aria-describedby="contact-name-error"
-              class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
-            />
-            <p id="contact-name-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label for="contact-email" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="contact-email"
-              name="email"
-              placeholder="name@company.com"
-              aria-describedby="contact-email-error"
-              class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
-            />
-            <p id="contact-email-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label for="contact-message" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
-              Message
-            </label>
-            <textarea
-              id="contact-message"
-              name="message"
-              rows="6"
-              placeholder="How can we help you coordinate your timezone sync?"
-              aria-describedby="contact-message-error"
-              class="w-full py-2.5 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all resize-y min-h-[120px]"
-            ></textarea>
-            <p id="contact-message-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
-          </div>
-
-          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
-            Submitting opens a draft in your local email client addressed to <a href="mailto:bitsharc.dev@gmail.com" class="underline hover:text-zinc-800 dark:hover:text-zinc-200">bitsharc.dev@gmail.com</a>. You can also copy the formatted message directly.
-          </p>
-
-          <!-- Action Buttons -->
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button
-              type="submit"
-              id="submit-btn"
-              class="px-6 py-2.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-full shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-              <span>Open in Email App</span>
-            </button>
-            <button
-              type="button"
-              id="form-copy-btn"
-              class="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 font-medium text-sm rounded-full border border-zinc-200 dark:border-zinc-800 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              <span id="form-copy-text">Copy Message</span>
-            </button>
-          </div>
-          
-        </form>
-      </section>
-
-    </main>
-
-    <!-- Footer Area -->
-    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6 bg-zinc-50 dark:bg-zinc-950/20 transition-colors duration-150">
-      <div class="max-w-[1400px] w-full mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-zinc-400 dark:text-zinc-500 font-mono select-none uppercase tracking-wider">
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span>RealTimeZones • Clean & Fast Time Sync</span>
-          <span class="hidden sm:inline text-zinc-200 dark:text-zinc-800">|</span>
-          <a href="/about" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">About</a>
-          <a href="/contact" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors text-zinc-950 dark:text-zinc-50 font-semibold">Contact</a>
-          <a href="/privacy" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Privacy</a>
-          <a href="/terms" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">Terms</a>
-        </div>
-        <div class="text-xs font-mono text-zinc-500 dark:text-[#888888] normal-case tracking-normal select-text text-center sm:text-left flex flex-col gap-4">
-          <p class="whitespace-nowrap">Built with ❤️ by <span class="text-zinc-900 dark:text-[#ffffff]">BitSharc</span></p>
-          <!-- Mobile-only Sponsor Section -->
-          <div class="flex flex-col items-center sm:items-start gap-1 sm:hidden">
-            <p class="text-xs font-sans text-zinc-650 dark:text-zinc-400">Found this tool helpful?</p>
-            <a 
-              href="https://ko-fi.com/bitsharc" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:text-[#888888] dark:hover:text-[#ffffff] bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 px-2.5 py-1 rounded-md transition-all duration-200 w-fit"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
-              Sponsor
-            </a>
-          </div>
-          <div class="flex flex-col items-center sm:items-start gap-1">
-            <span class="text-zinc-400 dark:text-[#666666]">More tools:</span>
-            <a 
-              href="https://courierprice.com" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-900 dark:text-[#888888] dark:hover:text-[#ffffff] transition-colors duration-200"
-            >
-              ↳ CourierPrice
-            </a>
-          </div>
-        </div>
-        <div class="flex items-center gap-4">
-          <button type="button" class="trigger-add-city hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">⌘K Search</button>
-          <span>•</span>
-          <button type="button" id="trigger-keyboard-help-footer" class="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">Shortcuts</button>
+        <textarea
+          id="clipboard-fallback-text"
+          class="hidden w-full min-h-32 p-3 bg-white/70 dark:bg-zinc-950/40 border border-emerald-500/20 rounded-lg text-xs font-mono text-zinc-700 dark:text-zinc-300 resize-y"
+          readonly
+          aria-label="Message to copy manually"
+        ></textarea>
+        <div class="flex flex-wrap items-center gap-3 pt-2">
+          <button
+            type="button"
+            id="status-copy-btn"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>Copy Message to Clipboard</span>
+          </button>
+          <button
+            type="button"
+            id="status-edit-btn"
+            class="px-4 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100 underline cursor-pointer"
+          >
+            Edit message
+          </button>
         </div>
       </div>
-    </footer>
+
+      <!-- The Contact Form -->
+      <form id="contact-form" class="flex flex-col gap-6 font-sans" novalidate>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="contact-name" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
+            Full Name
+          </label>
+          <input
+            type="text"
+            id="contact-name"
+            name="name"
+            placeholder="Your name"
+            aria-describedby="contact-name-error"
+            class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
+          />
+          <p id="contact-name-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="contact-email" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
+            Email Address
+          </label>
+          <input
+            type="email"
+            id="contact-email"
+            name="email"
+            placeholder="name@company.com"
+            aria-describedby="contact-email-error"
+            class="w-full h-10 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all"
+          />
+          <p id="contact-email-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label for="contact-message" class="text-xs font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
+            Message
+          </label>
+          <textarea
+            id="contact-message"
+            name="message"
+            rows="6"
+            placeholder="How can we help you coordinate your timezone sync?"
+            aria-describedby="contact-message-error"
+            class="w-full py-2.5 px-3 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-800 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 focus:border-zinc-400 dark:focus:border-zinc-700 transition-all resize-y min-h-[120px]"
+          ></textarea>
+          <p id="contact-message-error" class="hidden text-xs text-rose-500 font-sans" role="alert"></p>
+        </div>
+
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+          Submitting opens a draft in your local email client addressed to <a href="mailto:bitsharc.dev@gmail.com" class="underline hover:text-zinc-800 dark:hover:text-zinc-200">bitsharc.dev@gmail.com</a>. You can also copy the formatted message directly.
+        </p>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <button
+            type="submit"
+            id="submit-btn"
+            class="px-6 py-2.5 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm rounded-full shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            <span>Open in Email App</span>
+          </button>
+          <button
+            type="button"
+            id="form-copy-btn"
+            class="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-200 font-medium text-sm rounded-full border border-zinc-200 dark:border-zinc-800 transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span id="form-copy-text">Copy Message</span>
+          </button>
+        </div>
+
+      </form>
+    </section>
+
   </div>
 
   <!-- Command search dialog -->
@@ -206,7 +153,7 @@ const canonicalUrl = "https://realtimezones.com/contact";
 
   <!-- Keyboard Shortcuts reference modal -->
   <KeyboardHelp />
-</Layout>
+</MarketingLayout>
 
 <!-- Load Client Orchestrator Scripts Bundle for static pages -->
 <script src="../scripts/static-pages.ts"></script>
