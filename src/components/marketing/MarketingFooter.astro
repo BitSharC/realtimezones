@@ -1,0 +1,62 @@
+---
+interface Props {
+  active?: 'home' | 'planner' | 'download' | 'about';
+}
+
+const { active = 'home' } = Astro.props;
+const current = (route: string) => active === route ? 'page' : undefined;
+---
+<footer class="marketing-footer">
+  <div class="marketing-footer-inner">
+    <div class="marketing-footer-grid">
+      <section class="footer-brand-group" aria-label="RealTimeZones">
+        <a class="marketing-brand" href="/" aria-current={current('home')}>
+          <img src="/favicon.ico" width="16" height="16" alt="" />
+          <span>RealTimeZones</span>
+        </a>
+        <p>Plan in the browser, then keep global time close at hand.</p>
+      </section>
+
+      <section class="footer-group">
+        <h2>Product</h2>
+        <a href="/planner" aria-current={current('planner')}>Web Planner</a>
+        <a href="/download" aria-current={current('download')}>Desktop App</a>
+        <a href="https://github.com/BitSharC/realtimezones/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      </section>
+
+      <section class="footer-group">
+        <h2>Company &amp; Legal</h2>
+        <a href="/about" aria-current={current('about')}>About</a>
+        <a href="/contact">Contact</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </section>
+
+      <section class="footer-group footer-resources">
+        <h2>Resources</h2>
+        <a href="/timezone/london">London Time</a>
+        <a href="/timezone/new-york">New York Time</a>
+        <a href="/convert/est-to-ist">EST to IST</a>
+        <a href="/convert/london-to-new-york">London–New York</a>
+      </section>
+
+      <section class="footer-group">
+        <h2>Sponsor</h2>
+        <a href="https://ko-fi.com/bitsharc" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM6 2v2m4-2v2m4-2v2"></path></svg>
+          <span>Sponsor</span>
+        </a>
+      </section>
+
+      <section class="footer-group">
+        <h2>More Tools</h2>
+        <a href="https://courierprice.com" target="_blank" rel="noopener noreferrer">CourierPrice ↗</a>
+      </section>
+    </div>
+
+    <div class="marketing-footer-closing">
+      <span>RealTimeZones · Precision global time for distributed teams</span>
+      <span>Free web planner · Desktop app for macOS, Windows &amp; Linux</span>
+    </div>
+  </div>
+</footer>

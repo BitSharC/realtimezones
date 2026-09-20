@@ -210,7 +210,7 @@ const canonicalUrl = `https://realtimezones.com/timezone/${citySlug}`;
       <!-- Funnel CTA Row -->
       <section class="flex flex-col items-center justify-center gap-4 mt-8">
         <a 
-          href={`/?cities=${encodeURIComponent(cityData.name)}`}
+          href={`/planner?cities=${encodeURIComponent(cityData.name)}`}
           class="group inline-flex items-center gap-2.5 px-8 py-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-semibold text-sm md:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-150 transform hover:-translate-y-0.5 cursor-pointer"
         >
           Schedule a Meeting with {cityData.name}

@@ -11,6 +11,10 @@ import { generateGoogleCalendarUrl, generateOutlookCalendarUrl, generateIcsConte
 const rootPagePath = resolve(process.cwd(), 'src/pages/index.astro');
 const plannerPagePath = resolve(process.cwd(), 'src/pages/planner.astro');
 const desktopPagePath = resolve(process.cwd(), 'src/pages/desktop.astro');
+const pagesRedirectsPath = resolve(process.cwd(), 'public/_redirects');
+const robotsPath = resolve(process.cwd(), 'public/robots.txt');
+const headersPath = resolve(process.cwd(), 'public/_headers');
+const tauriConfigPath = resolve(process.cwd(), 'src-tauri/tauri.conf.json');
 
 const REQUIRED_PLANNER_DOM_IDS = [
   'timeline-scroll-container',
@@ -74,7 +78,31 @@ describe('Website Route Boundary — Phase 1', () => {
     assert.match(desktopSource, /initChronosDesktop/, 'Desktop route must initialize ChronosDesktop');
   });
 
-  it('contains all required real planner DOM hooks in /planner and /', () => {
+  it('keeps the desktop canvas internal on Cloudflare Pages without breaking Tauri', () => {
+    assert.strictEqual(existsSync(pagesRedirectsPath), true, 'public/_redirects must protect /desktop');
+    const redirects = readFileSync(pagesRedirectsPath, 'utf8');
+    for (const source of ['/desktop', '/desktop/', '/desktop/index.html', '/desktop/*']) {
+      assert.match(
+        redirects,
+        new RegExp(`^${source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+/\\s+302$`, 'm'),
+        `${source} must redirect away from the public desktop canvas`
+      );
+    }
+
+    const robots = readFileSync(robotsPath, 'utf8');
+    assert.match(robots, /^Disallow:\s*\/desktop\s*$/m, 'robots.txt must disallow the internal desktop canvas');
+
+    const headers = readFileSync(headersPath, 'utf8');
+    assert.match(headers, /^\/desktop(?:\/\*)?\s*$/m, 'desktop-specific headers must be declared');
+    assert.match(headers, /^\s+X-Robots-Tag:\s*noindex,\s*nofollow,\s*noarchive\s*$/m);
+    assert.match(headers, /^\s+Cache-Control:\s*private,\s*no-store\s*$/m);
+
+    const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, 'utf8'));
+    assert.strictEqual(tauriConfig.build.devUrl, 'http://localhost:4321/desktop');
+    assert.strictEqual(tauriConfig.app.windows[0].url, 'desktop/index.html');
+  });
+
+  it('keeps every operational planner DOM hook on /planner after / becomes marketing', () => {
     assert.strictEqual(existsSync(plannerPagePath), true, 'src/pages/planner.astro must exist before checking DOM hooks');
 
     const resolveFullSourceContent = (entryPath: string): string => {
@@ -101,18 +129,12 @@ describe('Website Route Boundary — Phase 1', () => {
     };
 
     const effectivePlannerSource = resolveFullSourceContent(plannerPagePath);
-    const effectiveRootSource = resolveFullSourceContent(rootPagePath);
 
     for (const hookId of REQUIRED_PLANNER_DOM_IDS) {
       assert.match(
         effectivePlannerSource,
         new RegExp(`id=["']${hookId}["']`),
         `/planner must contain DOM hook ID #${hookId}`
-      );
-      assert.match(
-        effectiveRootSource,
-        new RegExp(`id=["']${hookId}["']`),
-        `/ must contain DOM hook ID #${hookId}`
       );
     }
 
@@ -122,24 +144,17 @@ describe('Website Route Boundary — Phase 1', () => {
         new RegExp(classOrAttr),
         `/planner must contain class/hook ${classOrAttr}`
       );
-      assert.match(
-        effectiveRootSource,
-        new RegExp(classOrAttr),
-        `/ must contain class/hook ${classOrAttr}`
-      );
     }
 
-    // Both must bind the planner orchestrator script
     assert.match(
       effectivePlannerSource,
       /app\.ts/,
       '/planner must bind the app.ts orchestrator script'
     );
-    assert.match(
-      effectiveRootSource,
-      /app\.ts/,
-      '/ must bind the app.ts orchestrator script'
-    );
+
+    const rootSource = readFileSync(rootPagePath, 'utf8');
+    assert.match(rootSource, /MarketingHomepage/, '/ must render the marketing homepage');
+    assert.doesNotMatch(rootSource, /PlannerPage/, '/ must not duplicate the full planner surface');
   });
 
   it('loads realistic deterministic query parameters on a direct /planner URL', () => {

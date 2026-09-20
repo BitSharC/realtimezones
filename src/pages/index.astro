@@ -1,5 +1,15 @@
 ---
-import PlannerPage from '../components/planner/PlannerPage.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import MarketingHomepage from '../components/marketing/MarketingHomepage.astro';
 ---
 
-<PlannerPage url="https://realtimezones.com" />
+<MarketingLayout
+  title="RealTimeZones — Plan the whole meeting. Not just the start."
+  description="Compare complete meeting intervals across local Working, Border and Sleep hours with the free RealTimeZones web planner."
+  url="https://realtimezones.com/"
+  active="home"
+>
+  <MarketingHomepage />
+</MarketingLayout>
+
+<script src="../scripts/marketing.ts"></script>

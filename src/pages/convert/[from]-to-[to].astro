@@ -201,7 +201,7 @@ const pageUrl = `https://realtimezones.com/convert/${fromKey}-to-${toKey}`;
       <!-- CTA Redirection Grid Planner -->
       <section class="flex flex-col items-center justify-center gap-4 mt-8">
         <a 
-          href={`/?cities=${encodeURIComponent(fromCity)},${encodeURIComponent(toCity)}`}
+          href={`/planner?cities=${encodeURIComponent(fromCity)},${encodeURIComponent(toCity)}`}
           class="group inline-flex items-center gap-2.5 px-8 py-4 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200 font-medium text-sm md:text-base rounded-full shadow-lg hover:shadow-xl transition-all duration-150 cursor-pointer transform hover:-translate-y-0.5"
         >
           Schedule a Meeting Between {fromName} & {toName}

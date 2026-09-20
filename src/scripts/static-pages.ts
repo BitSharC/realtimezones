@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle city selection: add to workspace and redirect to /
+  // Handle city selection: add to workspace and open the planner.
   function selectCity(timezone: string, _name: string) {
     const canonicalCity = findCityByTimezone(timezone);
     if (!canonicalCity) return;
@@ -381,8 +381,8 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Failed to update workspace on selection: ', e);
     }
     
-    // Redirect to home page with canonical city text.
-    window.location.href = `/?cities=${encodeURIComponent(canonicalCity.name)}`;
+    // Open the planner directly with canonical city text.
+    window.location.href = `/planner?cities=${encodeURIComponent(canonicalCity.name)}`;
   }
 
   // Keyboard navigation inside search results

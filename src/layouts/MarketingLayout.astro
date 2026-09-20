@@ -1,0 +1,44 @@
+---
+import '../styles/marketing.css';
+import MarketingHeader from '../components/marketing/MarketingHeader.astro';
+import MarketingFooter from '../components/marketing/MarketingFooter.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  url: string;
+  active?: 'home' | 'planner' | 'download' | 'about';
+}
+
+const { title, description, url, active = 'home' } = Astro.props;
+---
+<!doctype html>
+<html lang="en" class="marketing-document">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#000000" />
+    <link rel="canonical" href={url} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={url} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="/og-image.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  </head>
+  <body class="marketing-shell">
+    <MarketingHeader active={active} />
+    <main id="main-content">
+      <slot />
+    </main>
+    <MarketingFooter active={active} />
+  </body>
+</html>

@@ -1,0 +1,51 @@
+---
+interface Props {
+  active?: 'home' | 'planner' | 'download' | 'about';
+}
+
+const { active = 'home' } = Astro.props;
+const current = (route: string) => active === route ? 'page' : undefined;
+---
+<header class="marketing-header" data-marketing-header>
+  <div class="marketing-header-desktop">
+    <a class="marketing-brand" href="/" aria-current={current('home')}>
+      <img src="/favicon.ico" width="16" height="16" alt="" />
+      <span>RealTimeZones</span>
+    </a>
+    <nav class="marketing-desktop-nav" aria-label="Primary navigation">
+      <a href="/planner" aria-current={current('planner')}>Planner</a>
+      <a href="/download" aria-current={current('download')}>Download</a>
+      <a href="/about" aria-current={current('about')}>About</a>
+    </nav>
+    <span class="marketing-header-balance" aria-hidden="true"></span>
+  </div>
+
+  <div class="marketing-header-mobile">
+    <div class="marketing-mobile-bar">
+      <a class="marketing-brand" href="/" aria-current={current('home')}>
+        <img src="/favicon.ico" width="16" height="16" alt="" />
+        <span>RealTimeZones</span>
+      </a>
+      <button
+        class="marketing-menu-button min-width-44"
+        type="button"
+        aria-label="Open navigation"
+        aria-controls="marketing-mobile-menu"
+        aria-expanded="false"
+        data-marketing-menu-button
+      >
+        <svg class="menu-open-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+        <svg class="menu-close-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18"></path>
+        </svg>
+      </button>
+    </div>
+    <nav id="marketing-mobile-menu" class="marketing-mobile-menu" aria-label="Mobile navigation" hidden data-marketing-mobile-menu>
+      <a href="/planner" aria-current={current('planner')}>Planner</a>
+      <a href="/download" aria-current={current('download')}>Download</a>
+      <a href="/about" aria-current={current('about')}>About</a>
+    </nav>
+  </div>
+</header>
