@@ -1,0 +1,6 @@
+# Keep the Tauri desktop canvas internal to packaged builds.
+# Cloudflare Pages evaluates these before serving matching static assets.
+/desktop / 302
+/desktop/ / 302
+/desktop/index.html / 302
+/desktop/* / 302

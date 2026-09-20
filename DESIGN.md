@@ -734,3 +734,37 @@ The brand uses STACKED shadows — multiple small offsets layered to fake natura
 - Don't promote the geometric sans to weight 700. The brand's display ceiling is 600.
 - Don't pair the marketing 100-px pill CTA shape with the 6-px nav radius on the same screen — pick a scale and stay there.
 - Don't set body paragraphs in the mono face. The mono is for code + technical labels only.
+
+## Protected surfaces and compatibility gates
+
+This file governs the public marketing surface only. It does not change the existing planner at `/planner` or the existing Chronos desktop surface at `/desktop`.
+
+### What stays untouched
+
+- The planner calculator, duration semantics, recommendations, share URLs, calendar export, local-first behavior, responsiveness, security hardening, and offline-capable behavior.
+- Native Tauri behavior, `src-tauri/src/lib.rs`, the WebKit EGL workaround, and `src-tauri/Cargo.lock`.
+- Existing planner components and styles used by the web planner and the desktop surface.
+- Any production behavior users already rely on.
+
+When marketing components or styles are added, they must be isolated from the planner and desktop surfaces. A marketing header, marketing CTA, and marketing section chrome must not leak into the planner route.
+
+### Route compatibility
+
+The marketing root must keep legacy planner share links working.
+Legacy root planner links that use `cities`, `focus`, `date`, `duration`, and `format` must continue to resolve to a working planner state when the root becomes marketing.
+Route compatibility is not a visual feature; it is a user-facing behavior that must survive the marketing redesign.
+
+### Static favicon and logo rule
+
+The static `/favicon.ico` is the only browser-tab emblem and the only in-page RealTimeZones emblem across the public marketing site.
+Do not introduce custom generated SVG logos or animated clock branding.
+In-page marketing references to the brand may use the same static file, but the real product UI inside a product frame is what carries the proof.
+The marketing shell never paints its own logo treatment over or beside the real product capture.
+
+### No destructive Git operations on protected surfaces
+
+Do not use destructive Git commands such as `git reset`, `git checkout`, or `git clean` against the protected planner or desktop surfaces during design work.
+
+## Production caveat for this design system
+
+This file is a design-system freeze, not a build spec, not a Tailwind config, and not a replacement for the existing project-level DESIGN.md. It captures the approved marketing grammar for the RealTimeZones v1.1.0 public surface. When it conflicts with the project-level DESIGN.md, the RealTimeZones marketing surface is governed by this file; the project-level file continues to describe its own brand.

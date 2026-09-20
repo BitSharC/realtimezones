@@ -1414,19 +1414,9 @@ class RealTimeZonesApp {
     // Set height dynamically based on timeline rows container height
     this.focusIndicator.style.height = `${this.timelineRowsContainer.offsetHeight}px`;
     
-    // Toggle active classes in individual elements covered by the meeting block
-    const allBlocks = this.timelineRowsContainer.querySelectorAll('.hour-block');
-    allBlocks.forEach(block => {
-      const idx = parseInt(block.getAttribute('data-hour-idx') || '-1');
-      const inDuration = (idx >= this.focusHour && idx < this.focusHour + Math.ceil(durationHours)) ||
-                         (this.focusHour + durationHours > 24 && (idx < (this.focusHour + durationHours) % 24)); // handle wrapping if any
-      
-      if (inDuration) {
-        block.classList.add('ring-2', 'ring-blue-500', 'z-10', 'bg-blue-500/10', 'border-blue-500/30');
-      } else {
-        block.classList.remove('ring-2', 'ring-blue-500', 'z-10', 'bg-blue-500/10', 'border-blue-500/30');
-      }
-    });
+    // The exact-width overlay is the single source of truth for selection geometry.
+    // Ringing whole hour cells would overstate partial-hour durations (for example,
+    // 90 minutes would appear to occupy two complete hours).
   }
 
   private updateCurrentTimeIndicator() {

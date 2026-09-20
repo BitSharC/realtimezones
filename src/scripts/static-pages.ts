@@ -26,9 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) {}
 
   function applyTheme(theme: string) {
+    const root = document.documentElement;
+    if (root.classList.contains('marketing-document')) {
+      root.classList.add('dark');
+      return;
+    }
     if (!isAllowedTheme(theme)) return;
     activeTheme = theme;
-    const root = document.documentElement;
     if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       root.classList.add('dark');
     } else {
@@ -92,8 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // System preference listener
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    const root = document.documentElement;
+    if (root.classList.contains('marketing-document')) {
+      root.classList.add('dark');
+      return;
+    }
     if (activeTheme === 'system') {
-      const root = document.documentElement;
       if (e.matches) root.classList.add('dark');
       else root.classList.remove('dark');
     }

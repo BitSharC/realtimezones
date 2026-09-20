@@ -231,4 +231,25 @@ describe('Meeting Duration & Interval Intelligence', () => {
     assert.notStrictEqual(setterEnd, -1);
     assert.match(setterSource, /this\.render\(\);/);
   });
+
+  it('renders partial-hour meeting selection with only the exact-width focus overlay', () => {
+    const indicatorStart = webAppSource.indexOf('private updateFocusIndicatorPosition()');
+    const indicatorEnd = webAppSource.indexOf('private updateCurrentTimeIndicator()', indicatorStart);
+    const indicatorSource = webAppSource.slice(indicatorStart, indicatorEnd);
+
+    assert.notStrictEqual(indicatorStart, -1);
+    assert.notStrictEqual(indicatorEnd, -1);
+    assert.match(indicatorSource, /const durationHours = this\.meetingDurationMinutes \/ 60;/);
+    assert.match(indicatorSource, /this\.focusIndicator\.style\.width = `\$\{durationHours \* blockWidth\}px`;/);
+    assert.doesNotMatch(
+      indicatorSource,
+      /Math\.ceil\(durationHours\)/,
+      'a 90-minute meeting must not outline two complete hourly cells'
+    );
+    assert.doesNotMatch(
+      indicatorSource,
+      /classList\.add\('ring-2'/,
+      'hour-cell rings must not compete with the exact-width range overlay'
+    );
+  });
 });

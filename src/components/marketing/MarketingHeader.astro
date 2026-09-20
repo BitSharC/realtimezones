@@ -3,7 +3,7 @@ interface Props {
   active?: 'home' | 'planner' | 'download' | 'about';
 }
 
-const { active = 'home' } = Astro.props;
+const { active } = Astro.props;
 const current = (route: string) => active === route ? 'page' : undefined;
 ---
 <header class="marketing-header" data-marketing-header>
