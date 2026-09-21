@@ -185,6 +185,28 @@ describe('Production marketing website', () => {
     assert.doesNotMatch(`${timezonePage}\n${converterPage}\n${staticPagesScript}`, /[`'" ]\/\?cities=/);
   });
 
+  it('ships retina planner captures and advertises them to high-density mobile screens', () => {
+    const homepage = source(homepagePath);
+    const retinaAssets = [
+      'planner-mobile-hero-60-1500@3x.png',
+      'planner-mobile-duration-60-1500@3x.png',
+      'planner-mobile-duration-90-1500@3x.png'
+    ];
+
+    const pngWidth = (path: string): number => {
+      const bytes = readFileSync(path);
+      assert.strictEqual(bytes.toString('ascii', 1, 4), 'PNG');
+      return bytes.readUInt32BE(16);
+    };
+
+    for (const filename of retinaAssets) {
+      const assetPath = resolve(repo, 'public/marketing', filename);
+      assert.strictEqual(existsSync(assetPath), true, `Missing retina planner capture ${filename}`);
+      assert.ok(pngWidth(assetPath) >= 1074, `${filename} must be at least 1074px wide`);
+      assert.match(homepage, new RegExp(`${filename.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')} 3x`));
+    }
+  });
+
   it('ships every approved product asset from the same-origin public directory', () => {
     const assets = [
       'planner-desktop-hero-60-1500.png',
