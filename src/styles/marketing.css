@@ -43,6 +43,10 @@
   max-width: 100%;
 }
 
+.marketing-shell .menu-close-icon {
+  display: none !important;
+}
+
 .marketing-shell a {
   color: inherit;
   text-decoration: none;
@@ -1243,16 +1247,24 @@
     stroke-linecap: round;
   }
 
-  .menu-close-icon {
-    display: none;
+  .marketing-menu-button .menu-close-icon {
+    display: none !important;
   }
 
-  [data-menu-open] .menu-open-icon {
-    display: none;
+  .marketing-menu-button .menu-open-icon {
+    display: block !important;
   }
 
-  [data-menu-open] .menu-close-icon {
-    display: block;
+  .marketing-header[data-menu-open] .marketing-menu-button .menu-open-icon,
+  [data-menu-open] .marketing-menu-button .menu-open-icon,
+  .marketing-menu-button[aria-expanded="true"] .menu-open-icon {
+    display: none !important;
+  }
+
+  .marketing-header[data-menu-open] .marketing-menu-button .menu-close-icon,
+  [data-menu-open] .marketing-menu-button .menu-close-icon,
+  .marketing-menu-button[aria-expanded="true"] .menu-close-icon {
+    display: block !important;
   }
 
   .marketing-mobile-menu[hidden] {
@@ -1298,7 +1310,7 @@
     line-height: 1.1;
   }
 
-  .marketing-shell h2 {
+  .marketing-shell h2:not(.footer-group h2) {
     font-size: 28px;
     line-height: 1.15;
   }
@@ -1657,6 +1669,21 @@
 
   .footer-brand-group {
     grid-column: 1 / -1;
+  }
+
+  .marketing-shell .footer-group h2,
+  .footer-group h2 {
+    display: flex;
+    min-height: 24px;
+    margin-bottom: 6px !important;
+    align-items: center;
+    color: var(--muted);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 11px !important;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    line-height: 1.4 !important;
+    text-transform: uppercase;
   }
 
   .footer-resources {

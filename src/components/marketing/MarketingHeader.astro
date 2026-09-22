@@ -49,3 +49,22 @@ const current = (route: string) => active === route ? 'page' : undefined;
     </nav>
   </div>
 </header>
+
+<style>
+  .marketing-menu-button .menu-close-icon {
+    display: none !important;
+  }
+  .marketing-menu-button .menu-open-icon {
+    display: block !important;
+  }
+  :global(.marketing-header[data-menu-open]) .marketing-menu-button .menu-open-icon,
+  :global([data-menu-open]) .marketing-menu-button .menu-open-icon,
+  .marketing-menu-button[aria-expanded="true"] .menu-open-icon {
+    display: none !important;
+  }
+  :global(.marketing-header[data-menu-open]) .marketing-menu-button .menu-close-icon,
+  :global([data-menu-open]) .marketing-menu-button .menu-close-icon,
+  .marketing-menu-button[aria-expanded="true"] .menu-close-icon {
+    display: block !important;
+  }
+</style>
