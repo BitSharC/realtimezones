@@ -794,10 +794,10 @@
 }
 
 .desktop-image-crop img {
+  display: block;
   width: 100%;
   height: auto;
   border-radius: 3px;
-  transform: translateY(-3.333333%);
 }
 
 .menu-bar-inset {
@@ -950,9 +950,10 @@
 }
 
 .workspace-image-crop img {
+  display: block;
   width: 100%;
   height: auto;
-  transform: translateY(-3.333333%);
+  border-radius: 3px;
 }
 
 .capabilities-download {
